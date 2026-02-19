@@ -5,6 +5,7 @@ export const MOCK_TASKS = [
         description: 'Complete your daily route efficiently and safely.',
         assignedBy: 'Coach Sarah',
         dueDate: 'Today, 2:00 PM',
+        durationMinutes: 86,
         status: 'in_progress', // not_started, in_progress, completed
         steps: [
             {
@@ -12,6 +13,7 @@ export const MOCK_TASKS = [
                 title: 'Before Leaving',
                 instruction: 'Check schedule & pick-up locations via email/Teams using your tablet.',
                 ttsText: 'Check your schedule and pick-up locations via email or Teams.',
+                durationMinutes: 5,
                 isCompleted: false,
                 mediaType: 'icon', // placeholder for now
                 mediaContent: 'calendar-check',
@@ -21,6 +23,7 @@ export const MOCK_TASKS = [
                 title: 'Before Leaving',
                 instruction: 'Gather: secure bag, metro card, pen, phone/tablet.',
                 ttsText: 'Gather your secure bag, metro card, pen, and phone or tablet.',
+                durationMinutes: 5,
                 isCompleted: false,
             },
             {
@@ -28,6 +31,7 @@ export const MOCK_TASKS = [
                 title: 'Pick-Up Location',
                 instruction: 'Travel to location on time.',
                 ttsText: 'Travel to the pick-up location and arrive on time.',
+                durationMinutes: 15,
                 isCompleted: false,
             },
             {
@@ -35,6 +39,7 @@ export const MOCK_TASKS = [
                 title: 'Pick-Up Location',
                 instruction: 'Greet staff politely.',
                 ttsText: 'Greet the staff politely when you arrive.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -42,6 +47,7 @@ export const MOCK_TASKS = [
                 title: 'Pick-Up Location',
                 instruction: 'Collect documents/materials.',
                 ttsText: 'Collect the documents or materials.',
+                durationMinutes: 5,
                 isCompleted: false,
             },
             {
@@ -49,6 +55,7 @@ export const MOCK_TASKS = [
                 title: 'Pick-Up Location',
                 instruction: 'Sign pick-up sheet.',
                 ttsText: 'Sign the pick-up sheet.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -56,6 +63,7 @@ export const MOCK_TASKS = [
                 title: 'Pick-Up Location',
                 instruction: 'Secure documents in bag.',
                 ttsText: 'Secure the documents in your bag.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -63,6 +71,7 @@ export const MOCK_TASKS = [
                 title: 'Next Pick-Up / Communication',
                 instruction: 'Notify next location via Teams/email that you are on the way.',
                 ttsText: 'Notify the next location via Teams or email that you are on the way.',
+                durationMinutes: 5,
                 isCompleted: false,
             },
             {
@@ -70,6 +79,7 @@ export const MOCK_TASKS = [
                 title: 'Next Pick-Up / Communication',
                 instruction: 'Ensure metro card is ready for transit.',
                 ttsText: 'Make sure your metro card is ready for transit.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -77,6 +87,7 @@ export const MOCK_TASKS = [
                 title: 'Travel to Headquarters',
                 instruction: 'Keep documents secure during transit.',
                 ttsText: 'Keep the documents secure during your transit.',
+                durationMinutes: 15,
                 isCompleted: false,
             },
             {
@@ -84,6 +95,7 @@ export const MOCK_TASKS = [
                 title: 'At Headquarters',
                 instruction: 'Greet staff.',
                 ttsText: 'Greet the staff at headquarters.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -91,6 +103,7 @@ export const MOCK_TASKS = [
                 title: 'At Headquarters',
                 instruction: 'Deliver documents/materials to point person.',
                 ttsText: 'Deliver the documents and materials to the point person.',
+                durationMinutes: 5,
                 isCompleted: false,
             },
             {
@@ -98,6 +111,7 @@ export const MOCK_TASKS = [
                 title: 'At Headquarters',
                 instruction: 'Sign drop-off sheet.',
                 ttsText: 'Sign the drop-off sheet.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -105,6 +119,7 @@ export const MOCK_TASKS = [
                 title: 'At Headquarters',
                 instruction: 'Notify supervisor of completed delivery.',
                 ttsText: 'Notify your supervisor that the delivery is complete.',
+                durationMinutes: 5,
                 isCompleted: false,
             },
             {
@@ -112,6 +127,7 @@ export const MOCK_TASKS = [
                 title: 'End of Shift',
                 instruction: 'Confirm no items left behind.',
                 ttsText: 'Check to ensure no items are left behind.',
+                durationMinutes: 2,
                 isCompleted: false,
             },
             {
@@ -119,6 +135,7 @@ export const MOCK_TASKS = [
                 title: 'End of Shift',
                 instruction: 'Replenish supplies.',
                 ttsText: 'Replenish your supplies for tomorrow.',
+                durationMinutes: 10,
                 isCompleted: false,
             },
         ],

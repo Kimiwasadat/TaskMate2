@@ -1,24 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../config/firebase-config";
+import { taskService } from '../services/taskService';
 import { MOCK_TASKS } from '../data/mockTasks';
 
 export default function TaskGuidanceScreen({ route, navigation }) {
     const { taskId } = route.params;
-    const task = MOCK_TASKS.find(t => t.id === taskId);
-
+    const [task, setTask] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(0); // total seconds
+    const [stepTimeLeft, setStepTimeLeft] = useState(0); // step seconds
+
+    useEffect(() => {
+        // Subscribe to this specific task
+        const unsubscribe = onSnapshot(doc(db, "tasks", taskId), (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                setTask({ id: doc.id, ...data });
+                // Initialize timer if not already set
+                if (timeLeft === 0 && data.durationMinutes) {
+                    setTimeLeft(data.durationMinutes * 60);
+                }
+            } else {
+                console.log("Firestore task record not found, checking mock data...");
+                const mockTask = MOCK_TASKS.find(t => t.id === taskId);
+                if (mockTask) {
+                    setTask(mockTask);
+                    if (timeLeft === 0 && mockTask.durationMinutes) {
+                        setTimeLeft(mockTask.durationMinutes * 60);
+                    }
+                }
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Firestore error, falling back to mock data:", error);
+            const mockTask = MOCK_TASKS.find(t => t.id === taskId);
+            if (mockTask) setTask(mockTask);
+            setLoading(false);
+        });
+
+        return () => {
+            unsubscribe();
+            Speech.stop();
+        };
+    }, [taskId]);
+
+    // Handle initial step time when task/step index loads
+    useEffect(() => {
+        if (task?.steps?.[currentStepIndex]?.durationMinutes) {
+            setStepTimeLeft(task.steps[currentStepIndex].durationMinutes * 60);
+        }
+    }, [task, currentStepIndex]);
+
+    useEffect(() => {
+        if (timeLeft <= 0 && stepTimeLeft <= 0) return;
+
+        const timerId = setInterval(() => {
+            setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+            setStepTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+
+        return () => clearInterval(timerId);
+    }, [timeLeft, stepTimeLeft]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
     const currentStep = task?.steps[currentStepIndex];
     const isLastStep = currentStepIndex === (task?.steps.length || 0) - 1;
-
-    useEffect(() => {
-        // Auto-read step when it loads (optional, maybe user setting later)
-        // speakText();
-        return () => Speech.stop();
-    }, [currentStepIndex]);
 
     const speakText = () => {
         const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
@@ -32,15 +89,25 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             Speech.speak(textToSpeak, {
                 onDone: () => setIsSpeaking(false),
                 onStopped: () => setIsSpeaking(false),
-                rate: 0.9, // Slightly slower for clarity
+                rate: 0.9,
             });
         }
     };
 
-    const handleNextStep = () => {
+    const handleNextStep = async () => {
+        console.log("handleNextStep called", { currentStepIndex, isLastStep });
         Speech.stop();
         setIsSpeaking(false);
+
         if (isLastStep) {
+            console.log("Last step reached, ensuring navigation to completion screen...");
+
+            // Try updating Firestore in the background
+            taskService.updateTask(taskId, { status: 'completed' })
+                .then(() => console.log("Background Firestore update successful"))
+                .catch(err => console.error("Background Firestore update failed", err));
+
+            // Navigate immediately for the mockup experience
             navigation.replace('TaskComplete');
         } else {
             setCurrentStepIndex(prev => prev + 1);
@@ -55,13 +122,35 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         }
     };
 
+    if (loading) {
+        return (
+            <View className="flex-1 items-center justify-center bg-white">
+                <ActivityIndicator size="large" color="#2563eb" />
+            </View>
+        );
+    }
+
     if (!task) return <View className="flex-1 items-center justify-center"><Text>Task not found</Text></View>;
 
     return (
         <SafeAreaView className="flex-1 bg-white flex-col">
             {/* Header / Progress */}
             <View className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-row justify-between items-center">
-                <Text className="text-slate-500 font-bold text-lg">Step {currentStepIndex + 1} of {task.steps.length}</Text>
+                <View>
+                    <Text className="text-slate-500 font-bold text-lg">Step {currentStepIndex + 1} of {task.steps.length}</Text>
+                    <View className="flex-row items-center">
+                        {timeLeft > 0 && (
+                            <Text className={`text-sm font-bold ${timeLeft < 300 ? 'text-red-500' : 'text-slate-400'} mr-4`}>
+                                Total: {formatTime(timeLeft)}
+                            </Text>
+                        )}
+                        {stepTimeLeft > 0 && (
+                            <Text className="text-sm font-bold text-blue-500">
+                                ⏱ This Step: {formatTime(stepTimeLeft)}
+                            </Text>
+                        )}
+                    </View>
+                </View>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Text className="text-blue-600 font-bold text-lg">Exit</Text>
                 </TouchableOpacity>
@@ -125,3 +214,4 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         </SafeAreaView>
     );
 }
+
