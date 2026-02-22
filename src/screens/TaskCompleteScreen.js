@@ -5,7 +5,18 @@ import * as Speech from 'expo-speech';
 
 export default function TaskCompleteScreen({ navigation }) {
     useEffect(() => {
-        Speech.speak("Great job! You have finished this task.", { rate: 1.0 });
+        // Small delay to ensure screen transition is complete and native engine is ready
+        const timer = setTimeout(() => {
+            Speech.speak("Great job! You have finished this task.", {
+                rate: 1.0,
+                onError: (e) => console.error("Completion Speech Error:", e)
+            });
+        }, 500);
+
+        return () => {
+            clearTimeout(timer);
+            Speech.stop();
+        };
     }, []);
 
     return (

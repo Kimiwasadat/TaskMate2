@@ -6,9 +6,11 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase-config";
 import { taskService } from '../services/taskService';
 import { MOCK_TASKS } from '../data/mockTasks';
+import { useUI } from '../context/UIContext';
 
 export default function TaskGuidanceScreen({ route, navigation }) {
     const { taskId } = route.params;
+    const { fontSizeLevel, toggleFontSize } = useUI();
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -77,20 +79,35 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     const currentStep = task?.steps[currentStepIndex];
     const isLastStep = currentStepIndex === (task?.steps.length || 0) - 1;
 
-    const speakText = () => {
+    const speakText = async () => {
         const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
         if (!textToSpeak) return;
 
-        if (isSpeaking) {
-            Speech.stop();
+        try {
+            if (isSpeaking) {
+                await Speech.stop();
+                setIsSpeaking(false);
+            } else {
+                // Explicitly stop any existing speech first
+                await Speech.stop();
+
+                // Small delay to ensure the native engine is ready
+                setTimeout(() => {
+                    setIsSpeaking(true);
+                    Speech.speak(textToSpeak, {
+                        onDone: () => setIsSpeaking(false),
+                        onStopped: () => setIsSpeaking(false),
+                        onError: (error) => {
+                            console.error("Speech Error:", error);
+                            setIsSpeaking(false);
+                        },
+                        rate: 0.9,
+                    });
+                }, 100);
+            }
+        } catch (error) {
+            console.error("Speech implementation error:", error);
             setIsSpeaking(false);
-        } else {
-            setIsSpeaking(true);
-            Speech.speak(textToSpeak, {
-                onDone: () => setIsSpeaking(false),
-                onStopped: () => setIsSpeaking(false),
-                rate: 0.9,
-            });
         }
     };
 
@@ -99,17 +116,32 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         Speech.stop();
         setIsSpeaking(false);
 
+        // Update current step as completed in Firestore
+        const updatedSteps = [...task.steps];
+        updatedSteps[currentStepIndex] = { ...updatedSteps[currentStepIndex], isCompleted: true };
+
         if (isLastStep) {
             console.log("Last step reached, ensuring navigation to completion screen...");
 
-            // Try updating Firestore in the background
-            taskService.updateTask(taskId, { status: 'completed' })
+            // Update entire task status and final steps array
+            taskService.updateTask(taskId, {
+                status: 'completed',
+                isCompleted: true,
+                steps: updatedSteps
+            })
                 .then(() => console.log("Background Firestore update successful"))
                 .catch(err => console.error("Background Firestore update failed", err));
 
             // Navigate immediately for the mockup experience
             navigation.replace('TaskComplete');
         } else {
+            // Update step-by-step progress in Firestore
+            taskService.updateTask(taskId, {
+                steps: updatedSteps
+            })
+                .then(() => console.log("Step progress updated in Firestore"))
+                .catch(err => console.error("Step progress update failed", err));
+
             setCurrentStepIndex(prev => prev + 1);
         }
     };
@@ -132,32 +164,71 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
     if (!task) return <View className="flex-1 items-center justify-center"><Text>Task not found</Text></View>;
 
+    // Font size scaling logic
+    const getFontSize = (baseSize) => {
+        const scale = fontSizeLevel === 1 ? 1 : fontSizeLevel === 2 ? 1.25 : 1.5;
+        return baseSize * scale;
+    };
+
     return (
         <SafeAreaView className="flex-1 bg-white flex-col">
             {/* Header / Progress */}
-            <View className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-row justify-between items-center">
-                <View>
-                    <Text className="text-slate-500 font-bold text-lg">Step {currentStepIndex + 1} of {task.steps.length}</Text>
-                    <View className="flex-row items-center">
-                        {timeLeft > 0 && (
-                            <Text className={`text-sm font-bold ${timeLeft < 300 ? 'text-red-500' : 'text-slate-400'} mr-4`}>
-                                Total: {formatTime(timeLeft)}
+            <View className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                <View className="flex-row justify-between items-start">
+                    <View className="flex-1 mr-4">
+                        <Text
+                            style={{ fontSize: getFontSize(18) }}
+                            className="text-slate-500 font-bold"
+                        >
+                            Step {currentStepIndex + 1} of {task.steps.length}
+                        </Text>
+
+                        <View className="mt-2 flex-row flex-wrap items-center">
+                            {timeLeft > 0 && (
+                                <Text
+                                    style={{ fontSize: getFontSize(14) }}
+                                    className={`font-bold ${timeLeft < 300 ? 'text-red-500' : 'text-slate-400'} mr-4`}
+                                >
+                                    Total: {formatTime(timeLeft)}
+                                </Text>
+                            )}
+                            {stepTimeLeft > 0 && (
+                                <View className="bg-blue-100 px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
+                                    <Text
+                                        style={{ fontSize: getFontSize(22) }}
+                                        className="font-black text-blue-700"
+                                    >
+                                        ⏱ This Step: {formatTime(stepTimeLeft)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                        {/* Text Size Toggle Button */}
+                        <TouchableOpacity
+                            onPress={toggleFontSize}
+                            className="bg-slate-200 p-3 rounded-full shadow-sm border border-slate-300"
+                            accessibilityLabel="Increase text size"
+                        >
+                            <Text className="text-xl font-bold text-slate-700">A<Text className="text-sm">A</Text>+</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => navigation.goBack()}>
+                            <Text
+                                style={{ fontSize: getFontSize(18) }}
+                                className="text-blue-600 font-bold"
+                            >
+                                Exit
                             </Text>
-                        )}
-                        {stepTimeLeft > 0 && (
-                            <Text className="text-sm font-bold text-blue-500">
-                                ⏱ This Step: {formatTime(stepTimeLeft)}
-                            </Text>
-                        )}
+                        </TouchableOpacity>
                     </View>
                 </View>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text className="text-blue-600 font-bold text-lg">Exit</Text>
-                </TouchableOpacity>
             </View>
 
             {/* Main Content Area */}
-            <View className="flex-1 px-6 justify-center">
+            <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 20 }}>
 
                 {/* Visual Placeholder (Video/Image) */}
                 <View className="w-full h-64 bg-slate-200 rounded-3xl mb-8 items-center justify-center">
@@ -167,7 +238,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                 </View>
 
                 {/* Text Instruction - Large & Clear */}
-                <Text className="text-3xl font-extrabold text-slate-900 text-center leading-tight mb-8">
+                <Text
+                    style={{ fontSize: getFontSize(30) }}
+                    className="font-extrabold text-slate-900 text-center leading-tight mb-8"
+                >
                     {currentStep.instruction}
                 </Text>
 
@@ -177,14 +251,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                         onPress={speakText}
                         className={`flex-row items-center px-6 py-3 rounded-full ${isSpeaking ? 'bg-orange-100' : 'bg-blue-50'}`}
                     >
-                        <Text className="text-3xl mr-3">{isSpeaking ? '🔊' : '🔈'}</Text>
-                        <Text className={`text-lg font-bold ${isSpeaking ? 'text-orange-700' : 'text-blue-700'}`}>
+                        <Text style={{ fontSize: getFontSize(30) }} className="mr-3">{isSpeaking ? '🔊' : '🔈'}</Text>
+                        <Text
+                            style={{ fontSize: getFontSize(18) }}
+                            className={`font-bold ${isSpeaking ? 'text-orange-700' : 'text-blue-700'}`}
+                        >
                             {isSpeaking ? 'Stop Reading' : 'Read to Me'}
                         </Text>
                     </TouchableOpacity>
                 </View>
 
-            </View>
+            </ScrollView>
 
             {/* Bottom Controls - BIG TARGETS */}
             <View className="px-6 pb-8 pt-4 border-t border-slate-100 bg-white">
@@ -205,7 +282,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                         onPress={handleNextStep}
                         className={`flex-[2] rounded-2xl items-center justify-center py-5 ${isLastStep ? 'bg-green-600' : 'bg-blue-600'}`}
                     >
-                        <Text className="text-white font-extrabold text-2xl">
+                        <Text
+                            style={{ fontSize: getFontSize(24) }}
+                            className="text-white font-extrabold"
+                        >
                             {isLastStep ? 'FINISH TASK' : 'NEXT STEP'}
                         </Text>
                     </TouchableOpacity>
