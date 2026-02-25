@@ -1,1 +1,1 @@
-export const CLERK_PUBLISHABLE_KEY = "pk_test_Y29tcGxldGUtYmFybmFjbGUtNjQuY2xlcmsuYWNjb3VudHMuZGV2JA";
+export const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_aW1tdW5lLXdhbHJ1cy03Ni5jbGVyay5hY2NvdW50cy5kZXYk";

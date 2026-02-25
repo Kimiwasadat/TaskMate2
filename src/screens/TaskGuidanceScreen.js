@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUser } from '@clerk/clerk-expo';
 import * as Speech from 'expo-speech';
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../config/firebase-config";
-import { taskService } from '../services/taskService';
-import { MOCK_TASKS } from '../data/mockTasks';
+import { getPlan, clientMarkStepComplete } from '../services/backend';
 
 export default function TaskGuidanceScreen({ route, navigation }) {
+    const { user } = useUser();
     const { taskId } = route.params;
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -17,35 +16,27 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     const [stepTimeLeft, setStepTimeLeft] = useState(0); // step seconds
 
     useEffect(() => {
-        // Subscribe to this specific task
-        const unsubscribe = onSnapshot(doc(db, "tasks", taskId), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                setTask({ id: doc.id, ...data });
-                // Initialize timer if not already set
-                if (timeLeft === 0 && data.durationMinutes) {
-                    setTimeLeft(data.durationMinutes * 60);
-                }
-            } else {
-                console.log("Firestore task record not found, checking mock data...");
-                const mockTask = MOCK_TASKS.find(t => t.id === taskId);
-                if (mockTask) {
-                    setTask(mockTask);
-                    if (timeLeft === 0 && mockTask.durationMinutes) {
-                        setTimeLeft(mockTask.durationMinutes * 60);
+        const fetchTask = async () => {
+            try {
+                const data = await getPlan(taskId);
+                if (data) {
+                    setTask(data);
+                    if (timeLeft === 0 && data.durationMinutes) {
+                        setTimeLeft(data.durationMinutes * 60);
                     }
+                } else {
+                    console.log("Task not found");
                 }
+            } catch (error) {
+                console.error("Error fetching task:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
-        }, (error) => {
-            console.error("Firestore error, falling back to mock data:", error);
-            const mockTask = MOCK_TASKS.find(t => t.id === taskId);
-            if (mockTask) setTask(mockTask);
-            setLoading(false);
-        });
+        };
+
+        fetchTask();
 
         return () => {
-            unsubscribe();
             Speech.stop();
         };
     }, [taskId]);
@@ -102,10 +93,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         if (isLastStep) {
             console.log("Last step reached, ensuring navigation to completion screen...");
 
-            // Try updating Firestore in the background
-            taskService.updateTask(taskId, { status: 'completed' })
-                .then(() => console.log("Background Firestore update successful"))
-                .catch(err => console.error("Background Firestore update failed", err));
+            // Try updating backend in the background
+            if (user) {
+                clientMarkStepComplete(user.id, taskId, currentStep.id)
+                    .then(() => console.log("Background backend update successful"))
+                    .catch(err => console.error("Background backend update failed", err));
+            }
 
             // Navigate immediately for the mockup experience
             navigation.replace('TaskComplete');

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser, useAuth } from "@clerk/clerk-expo";
-import { taskService } from '../services/taskService';
-
+import { clientListAssignedPlans } from '../services/backend';
 export default function DashboardScreen({ navigation }) {
     const { user } = useUser();
     const { signOut } = useAuth();
@@ -11,25 +10,18 @@ export default function DashboardScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Seed mock data if empty (prototype only)
-        taskService.seedMockData();
-
-        // Subscribe to real-time updates
-        const unsubscribe = taskService.subscribeToTasks((fetchedTasks) => {
-            setTasks(fetchedTasks);
+        const fetchTasks = async () => {
+            if (user) {
+                const fetchedTasks = await clientListAssignedPlans(user.id);
+                setTasks(fetchedTasks || []);
+            }
             setLoading(false);
-        });
+        };
+        fetchTasks();
+    }, [user]);
 
-        return () => unsubscribe();
-    }, []);
+    // Timer is temporarily removed pending realtime implementation
 
-    // Global timer to force refresh every second for live countdowns
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTasks(prevTasks => [...prevTasks]);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
 
     const formatTime = (minutes) => {
         if (!minutes) return '--:--';
@@ -86,7 +78,15 @@ export default function DashboardScreen({ navigation }) {
                         <Text className="text-blue-600 font-bold text-lg">Sign Out</Text>
                     </TouchableOpacity>
                 </View>
-                <Text className="text-xl text-slate-600 mb-8">Here are your tasks for today.</Text>
+                <View className="flex-row justify-between items-center mb-8">
+                    <Text className="text-xl text-slate-600">Here are your tasks for today.</Text>
+                    <TouchableOpacity
+                        className="bg-slate-200 px-3 py-1 rounded-lg"
+                        onPress={() => navigation.navigate('Debug')}
+                    >
+                        <Text className="text-slate-700 font-medium text-sm">Debug Auth</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <FlatList
                     data={tasks}
