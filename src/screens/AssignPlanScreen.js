@@ -149,7 +149,9 @@ export default function AssignPlanScreen({ navigation }) {
                 <Text
                   className={`font-bold text-lg ${selectedEmployeeId === emp.id ? "text-blue-800" : "text-slate-800"}`}
                 >
-                  Employee ID: {emp.id.substring(0, 10)}...
+                  {emp.username
+                    ? `@${emp.username}`
+                    : `Employee ID: ${emp.id.substring(0, 10)}...`}
                 </Text>
                 <Text className="text-slate-500 mt-1 uppercase text-xs font-bold tracking-wider">
                   {emp.role}

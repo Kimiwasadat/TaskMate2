@@ -43,7 +43,11 @@ export default function SignUpScreen({
       await setActive({ session: completeSignUp.createdSessionId });
 
       // Sync the new user to Firestore
-      await saveUserToFirestore(completeSignUp.createdUserId, selectedRole);
+      await saveUserToFirestore(
+        completeSignUp.createdUserId,
+        selectedRole,
+        username,
+      );
     } catch (err) {
       console.error(JSON.stringify(err, null, 2));
       Alert.alert("Error", err.errors?.[0]?.message || "Failed to sign up");
