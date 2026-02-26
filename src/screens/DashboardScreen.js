@@ -18,8 +18,10 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     const fetchTasks = async () => {
       if (user) {
+        console.log("---- FETCHING ASSIGNMENTS FOR USER ID:", user.id);
         try {
           const fetchedTasks = await getAssignmentsForClient(user.id);
+          console.log("---- FOUND DB ASSIGNMENTS:", fetchedTasks);
           setTasks(fetchedTasks || []);
         } catch (error) {
           console.error("Error fetching tasks:", error);
