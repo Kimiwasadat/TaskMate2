@@ -15,7 +15,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { saveUserToFirestore } from "../services/firestoreService";
 
-export default function SignUpScreen({ onNavigateToLogin }) {
+export default function SignUpScreen({
+  selectedRole,
+  onNavigateToLogin,
+  onNavigateBack,
+}) {
   const { isLoaded, signUp, setActive } = useSignUp();
 
   const [username, setUsername] = useState("");
@@ -33,10 +37,18 @@ export default function SignUpScreen({ onNavigateToLogin }) {
       });
 
       // Because email verification is disabled in Clerk, creation succeeds immediately.
+
+      // Save the role to Clerk's publicMetadata so the Navigation router can read it
+      await signUp.update({
+        publicMetadata: {
+          role: selectedRole,
+        },
+      });
+
       await setActive({ session: completeSignUp.createdSessionId });
 
-      // Sync the new user to Firestore (defaulting to client role)
-      await saveUserToFirestore(completeSignUp.createdUserId, "client");
+      // Sync the new user to Firestore
+      await saveUserToFirestore(completeSignUp.createdUserId, selectedRole);
     } catch (err) {
       console.error(JSON.stringify(err, null, 2));
       Alert.alert("Error", err.errors?.[0]?.message || "Failed to sign up");
@@ -113,6 +125,13 @@ export default function SignUpScreen({ onNavigateToLogin }) {
                 Already have an account?{" "}
                 <Text className="text-blue-600 font-bold">Log in instead</Text>
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onNavigateBack}
+              className="mt-4 items-center"
+            >
+              <Text className="text-slate-400 font-bold">← Change Role</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
