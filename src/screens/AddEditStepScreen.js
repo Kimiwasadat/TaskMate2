@@ -9,9 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import { updatePlanSteps } from "../services/firestoreService";
+import { uploadMediaToStorage } from "../services/storageService";
 
 export default function AddEditStepScreen({ route, navigation }) {
   // Determine if we are adding a new step, or editing an existing one
@@ -23,7 +26,33 @@ export default function AddEditStepScreen({ route, navigation }) {
   const [durationMinutes, setDurationMinutes] = useState(
     step?.durationMinutes?.toString() || "",
   );
+  const [localMediaUri, setLocalMediaUri] = useState(step?.mediaUrl || null);
   const [loading, setLoading] = useState(false);
+
+  const pickImage = async () => {
+    // Request permission
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You've refused to allow this app to access your photos!",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setLocalMediaUri(result.assets[0].uri);
+    }
+  };
 
   const handleSaveStep = async () => {
     if (!title.trim() || !instruction.trim()) {
@@ -36,13 +65,39 @@ export default function AddEditStepScreen({ route, navigation }) {
 
     setLoading(true);
     try {
+      const stepId = isEditing
+        ? step.id
+        : Math.random().toString(36).substr(2, 9);
+      let finalMediaUrl = step?.mediaUrl || null;
+
+      // If we have a local URI and it's not the same as the existing mediaUrl (meaning they just picked a new file)
+      if (localMediaUri && localMediaUri !== step?.mediaUrl) {
+        try {
+          finalMediaUrl = await uploadMediaToStorage(
+            localMediaUri,
+            planId,
+            stepId,
+          );
+        } catch (uploadError) {
+          Alert.alert(
+            "Upload Failed",
+            "Failed to upload the image to Firebase Storage.",
+          );
+          console.error(uploadError);
+          finalMediaUrl = null; // Do not block saving the step if image fails, or you could return here
+        }
+      } else if (!localMediaUri) {
+        // If they removed the image
+        finalMediaUrl = null;
+      }
+
       const newStep = {
-        id: isEditing ? step.id : Math.random().toString(36).substr(2, 9),
+        id: stepId,
         title: title.trim(),
         instruction: instruction.trim(),
         durationMinutes: parseInt(durationMinutes) || 0,
-        isCompleted: false, // Default for assignments later
-        // Future fields for Media Uploads will go here
+        isCompleted: false,
+        mediaUrl: finalMediaUrl,
       };
 
       const updatedSteps = [...currentSteps];
@@ -169,14 +224,37 @@ export default function AddEditStepScreen({ route, navigation }) {
             />
           </View>
 
-          <View className="mb-8 bg-purple-50 p-5 rounded-2xl border border-dashed border-purple-200">
-            <Text className="text-center text-purple-800 font-semibold mb-1 mt-2">
-              Media Uploads Coming Soon
+          <View className="mb-8">
+            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+              Media Attachment
             </Text>
-            <Text className="text-center text-purple-600 text-sm mb-2 px-4">
-              You will soon be able to attach photos and videos to this step to
-              guide your employees.
-            </Text>
+            {localMediaUri ? (
+              <View className="relative rounded-xl overflow-hidden mb-2 border border-slate-200">
+                <Image
+                  source={{ uri: localMediaUri }}
+                  className="w-full h-48 bg-slate-100"
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  className="absolute top-2 right-2 bg-slate-900/70 p-2 rounded-full"
+                  onPress={() => setLocalMediaUri(null)}
+                >
+                  <Text className="text-white font-bold text-xs">✕ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={pickImage}
+                className="bg-purple-50 p-6 rounded-2xl border border-dashed border-purple-200 items-center justify-center"
+              >
+                <Text className="text-purple-600 font-bold mb-1">
+                  + Attach Photo or Video
+                </Text>
+                <Text className="text-purple-400 text-xs">
+                  Tap to open gallery
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {isEditing && (
