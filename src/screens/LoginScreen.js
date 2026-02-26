@@ -3,10 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } fro
 import { useSignIn } from "@clerk/clerk-expo";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function LoginScreen() {
+export default function LoginScreen({ onNavigateToSignUp }) {
     const { signIn, setActive, isLoaded } = useSignIn();
 
-    const [emailAddress, setEmailAddress] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -16,7 +16,7 @@ export default function LoginScreen() {
 
         try {
             const completeSignIn = await signIn.create({
-                identifier: emailAddress,
+                identifier: username,
                 password,
             });
 
@@ -40,13 +40,13 @@ export default function LoginScreen() {
 
                 <View className="space-y-4">
                     <View>
-                        <Text className="text-lg font-bold text-slate-700 mb-2">Email</Text>
+                        <Text className="text-lg font-bold text-slate-700 mb-2">Username</Text>
                         <TextInput
                             autoCapitalize="none"
-                            value={emailAddress}
-                            placeholder="name@email.com"
+                            value={username}
+                            placeholder="Enter your username"
                             className="bg-slate-100 p-5 rounded-2xl text-xl"
-                            onChangeText={(email) => setEmailAddress(email)}
+                            onChangeText={(text) => setUsername(text)}
                         />
                     </View>
 
@@ -71,6 +71,15 @@ export default function LoginScreen() {
                         ) : (
                             <Text className="text-white font-extrabold text-2xl">Sign In</Text>
                         )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={onNavigateToSignUp}
+                        className="mt-6 items-center"
+                    >
+                        <Text className="text-slate-500 text-lg">
+                            Don't have an account? <Text className="text-blue-600 font-bold">Sign up</Text>
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
