@@ -34,17 +34,12 @@ export default function SignUpScreen({
       const completeSignUp = await signUp.create({
         username,
         password,
-      });
-
-      // Because email verification is disabled in Clerk, creation succeeds immediately.
-
-      // Save the role to Clerk's publicMetadata so the Navigation router can read it
-      await signUp.update({
-        publicMetadata: {
+        unsafeMetadata: {
           role: selectedRole,
         },
       });
 
+      // Because email verification is disabled in Clerk, creation succeeds immediately.
       await setActive({ session: completeSignUp.createdSessionId });
 
       // Sync the new user to Firestore
