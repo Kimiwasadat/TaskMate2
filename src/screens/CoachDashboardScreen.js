@@ -104,10 +104,16 @@ export default function CoachDashboardScreen({ navigation }) {
           <Text className="text-2xl font-bold text-slate-800">Your Plans</Text>
           <View className="flex-row">
             <TouchableOpacity
-              className="bg-purple-200 px-4 py-2 rounded-full mr-2"
+              className="bg-purple-100 px-4 py-2 rounded-full mr-2"
+              onPress={() => navigation.navigate("CoachProgress")}
+            >
+              <Text className="text-purple-800 font-bold">Progress</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="bg-purple-300 px-4 py-2 rounded-full mr-2"
               onPress={() => navigation.navigate("AssignPlan")}
             >
-              <Text className="text-purple-800 font-bold">Assign</Text>
+              <Text className="text-purple-900 font-bold">Assign</Text>
             </TouchableOpacity>
             <TouchableOpacity
               className="bg-purple-600 px-4 py-2 rounded-full"

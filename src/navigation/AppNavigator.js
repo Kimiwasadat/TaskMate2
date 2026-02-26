@@ -17,6 +17,7 @@ import AssignmentListScreen from "../screens/AssignmentListScreen";
 import AssignmentScreen from "../screens/AssignmentScreen";
 import AddEditStepScreen from "../screens/AddEditStepScreen";
 import AssignPlanScreen from "../screens/AssignPlanScreen";
+import CoachProgressScreen from "../screens/CoachProgressScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +52,7 @@ function CoachStack() {
         <Stack.Screen name="AssignmentList" component={AssignmentListScreen} />
         <Stack.Screen name="Assignment" component={AssignmentScreen} />
         <Stack.Screen name="AssignPlan" component={AssignPlanScreen} />
+        <Stack.Screen name="CoachProgress" component={CoachProgressScreen} />
         <Stack.Screen name="AddEditStep" component={AddEditStepScreen} />
         <Stack.Screen name="Debug" component={DebugScreen} />
       </Stack.Navigator>

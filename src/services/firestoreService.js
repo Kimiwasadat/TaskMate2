@@ -175,3 +175,49 @@ export const updateAssignmentStatus = async (assignmentId, status) => {
     throw error;
   }
 };
+
+export const getAssignmentsByCoach = async (coachId) => {
+  try {
+    const q = query(
+      collection(db, "assignments"),
+      where("coachId", "==", coachId),
+    );
+    const snapshot = await getDocs(q);
+
+    const assignments = [];
+    for (const docSnap of snapshot.docs) {
+      const assignmentData = docSnap.data();
+
+      // Fetch Plan details safely
+      let planDetails = null;
+      if (assignmentData.planId) {
+        const planDoc = await getDoc(doc(db, "plans", assignmentData.planId));
+        if (planDoc.exists()) planDetails = planDoc.data();
+      }
+
+      // Fetch Employee details safely
+      let userDetails = null;
+      if (assignmentData.clientId) {
+        const userDoc = await getDoc(doc(db, "users", assignmentData.clientId));
+        if (userDoc.exists()) userDetails = userDoc.data();
+      }
+
+      assignments.push({
+        id: docSnap.id,
+        ...assignmentData,
+        planDetails,
+        userDetails,
+      });
+    }
+
+    // Optional: Sort by assignedAt descending (newest first)
+    assignments.sort(
+      (a, b) => b.assignedAt?.toMillis() - a.assignedAt?.toMillis(),
+    );
+
+    return assignments;
+  } catch (error) {
+    console.error("Error fetching coach assignments:", error);
+    return [];
+  }
+};
