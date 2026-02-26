@@ -142,6 +142,7 @@ export default function PlanDetailScreen({ route, navigation }) {
       {plan && (
         <View className="absolute bottom-0 w-full p-6 bg-white border-t border-slate-100 shadow-xl">
           <TouchableOpacity
+            onPress={() => navigation.navigate("AssignPlan")}
             className={`py-4 rounded-full items-center justify-center ${plan.steps?.length > 0 ? "bg-purple-600" : "bg-slate-300"}`}
             disabled={!plan.steps || plan.steps.length === 0}
           >
