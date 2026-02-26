@@ -79,7 +79,7 @@ export default function PlanDetailScreen({ route, navigation }) {
         >
           {planTitle || "Plan Details"}
         </Text>
-        <View className="w-16" /> {/* Placeholder to balance the header */}
+        <View className="w-16" />
       </View>
 
       {loading && !plan ? (
