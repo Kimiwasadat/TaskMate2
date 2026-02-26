@@ -18,8 +18,13 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     const fetchTasks = async () => {
       if (user) {
-        const fetchedTasks = await clientListAssignedPlans(user.id);
-        setTasks(fetchedTasks || []);
+        try {
+          const fetchedTasks = await getAssignmentsForClient(user.id);
+          setTasks(fetchedTasks || []);
+        } catch (error) {
+          console.error("Error fetching tasks:", error);
+          setTasks([]);
+        }
       }
       setLoading(false);
     };
