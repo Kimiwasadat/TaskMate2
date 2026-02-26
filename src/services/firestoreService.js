@@ -57,6 +57,17 @@ export const saveUserToFirestore = async (userId, role) => {
   }
 };
 
+export const getAllEmployees = async () => {
+  try {
+    const q = query(collection(db, "users"), where("role", "==", "Employee"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching employees:", error);
+    return [];
+  }
+};
+
 // --- PLAN OPERATIONS (COACHES) ---
 export const createPlan = async (coachId, planData) => {
   try {
@@ -109,6 +120,22 @@ export const updatePlanSteps = async (planId, stepsArray) => {
 };
 
 // --- ASSIGNMENT OPERATIONS (EMPLOYEES/CLIENTS) ---
+export const createAssignment = async (clientId, planId, coachId) => {
+  try {
+    const assignmentsRef = collection(db, "assignments");
+    const docRef = await addDoc(assignmentsRef, {
+      clientId,
+      planId,
+      coachId,
+      status: "not_started",
+      assignedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Error creating assignment:", error);
+    throw error;
+  }
+};
 export const getAssignmentsForClient = async (clientId) => {
   try {
     const q = query(
