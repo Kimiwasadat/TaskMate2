@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@clerk/clerk-expo';
 import { coachListPlans, coachAssignPlanToClient, getPrototypeEmployees } from '../services/backend';
 import { Picker } from '@react-native-picker/picker';
+import LoadingLogo from '../components/LoadingLogo';
 
 export default function AssignmentScreen({ navigation }) {
     const { user } = useUser();
@@ -48,29 +49,30 @@ export default function AssignmentScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white p-6">
-            <View className="flex-row justify-between items-center mb-8">
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text className="text-slate-500 font-bold text-lg">Cancel</Text>
+        <SafeAreaView className="flex-1 bg-background p-6">
+            <View className="flex-row justify-between items-center mb-8 mt-2">
+                <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                    <Text className="text-text-muted font-bold text-base">Cancel</Text>
                 </TouchableOpacity>
-                <Text className="text-2xl font-extrabold text-slate-800">Assign Plan</Text>
+                <Text className="text-2xl font-bold text-text-primary">Assign Plan</Text>
                 <View style={{ width: 50 }} />
             </View>
 
             <View className="flex-1">
-                <Text className="text-slate-700 font-bold mb-2 text-lg">Select Plan</Text>
-                <View className="bg-slate-50 border border-slate-200 rounded-xl mb-6 p-2">
+                <Text className="text-text-primary font-bold mb-2 text-lg">Select Plan</Text>
+                <View className="bg-surface border border-border rounded-xl mb-6 p-2 shadow-sm">
                     {/* Primitive dropdown substitution since we don't have standard cross-platform picker installed natively in expo by default */}
                     {plans.length === 0 ? (
-                        <Text className="text-slate-400 p-2">No published plans available.</Text>
+                        <Text className="text-text-muted p-2">No published plans available.</Text>
                     ) : (
                         plans.map(p => (
                             <TouchableOpacity
                                 key={p.id}
+                                activeOpacity={0.7}
                                 onPress={() => setSelectedPlanId(p.id)}
-                                className={`p-4 rounded-lg mb-1 ${selectedPlanId === p.id ? 'bg-blue-100 border border-blue-300' : ''}`}
+                                className={`p-4 rounded-lg mb-1 ${selectedPlanId === p.id ? 'bg-primary/20 border border-primary/30' : ''}`}
                             >
-                                <Text className={`font-medium ${selectedPlanId === p.id ? 'text-blue-800' : 'text-slate-700'}`}>
+                                <Text className={`font-medium ${selectedPlanId === p.id ? 'text-primary-dark font-bold' : 'text-text-primary'}`}>
                                     {p.title}
                                 </Text>
                             </TouchableOpacity>
@@ -78,10 +80,10 @@ export default function AssignmentScreen({ navigation }) {
                     )}
                 </View>
 
-                <Text className="text-slate-700 font-bold mb-2 text-lg">Select Client</Text>
-                <Text className="text-slate-500 mb-2 text-sm">Choose an employee from the workspace.</Text>
+                <Text className="text-text-primary font-bold mb-2 text-lg">Select Client</Text>
+                <Text className="text-text-muted mb-2 text-sm">Choose an employee from the workspace.</Text>
 
-                <View className="bg-slate-50 border border-slate-200 rounded-xl mb-8 overflow-hidden">
+                <View className="bg-surface border border-border rounded-xl mb-8 overflow-hidden shadow-sm">
                     <Picker
                         selectedValue={selectedClientId}
                         onValueChange={(itemValue) => setSelectedClientId(itemValue)}
@@ -95,12 +97,13 @@ export default function AssignmentScreen({ navigation }) {
                 <TouchableOpacity
                     onPress={handleAssign}
                     disabled={loading || plans.length === 0}
-                    className={`py-5 rounded-2xl items-center justify-center ${loading || plans.length === 0 ? 'bg-slate-300' : 'bg-blue-600'}`}
+                    activeOpacity={0.8}
+                    className={`h-[56px] rounded-[14px] items-center justify-center ${loading || plans.length === 0 ? 'bg-surface border border-border' : 'bg-primary active:bg-primary-dark'}`}
                 >
                     {loading ? (
-                        <ActivityIndicator color="white" />
+                        <ActivityIndicator color={loading || plans.length === 0 ? '#5B667A' : 'white'} />
                     ) : (
-                        <Text className="text-white font-extrabold text-xl">Confirm Assignment</Text>
+                        <Text className={`font-bold text-lg ${loading || plans.length === 0 ? 'text-text-muted' : 'text-white'}`}>Confirm Assignment</Text>
                     )}
                 </TouchableOpacity>
             </View>

@@ -7,6 +7,7 @@ import RoleSelectionScreen from "./src/screens/RoleSelectionScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import { CLERK_PUBLISHABLE_KEY } from "./src/config/clerk-config";
 import tokenCache from "./src/utils/cache";
+import IntroGate from "./src/components/IntroGate";
 import "./global.css";
 
 function AuthStack() {
@@ -48,13 +49,15 @@ export default function App() {
       publishableKey={CLERK_PUBLISHABLE_KEY}
       tokenCache={tokenCache}
     >
-      <StatusBar style="auto" />
-      <SignedIn>
-        <AppNavigator />
-      </SignedIn>
-      <SignedOut>
-        <AuthStack />
-      </SignedOut>
+      <IntroGate>
+        <StatusBar style="auto" />
+        <SignedIn>
+          <AppNavigator />
+        </SignedIn>
+        <SignedOut>
+          <AuthStack />
+        </SignedOut>
+      </IntroGate>
     </ClerkProvider>
   );
 }

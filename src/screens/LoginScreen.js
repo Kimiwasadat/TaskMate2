@@ -33,29 +33,31 @@ export default function LoginScreen({ onNavigateToSignUp }) {
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-1 px-8 justify-center">
-                <View className="mb-12">
-                    <Text className="text-5xl font-extrabold text-slate-900 mb-2">TaskMate</Text>
-                    <Text className="text-xl text-slate-500">Helping you work with confidence.</Text>
+                <View className="mb-12 mt-8">
+                    <Text className="text-3xl font-bold text-text-primary mb-2">TaskMate</Text>
+                    <Text className="text-base text-text-muted">Helping you work with confidence.</Text>
                 </View>
 
                 <View className="space-y-4">
                     <View>
-                        <Text className="text-lg font-bold text-slate-700 mb-2">Username</Text>
+                        <Text className="text-sm font-semibold text-text-primary mb-2">Username</Text>
                         <TextInput
                             autoCapitalize="none"
                             value={username}
                             placeholder="Enter your username"
-                            className="bg-slate-100 p-5 rounded-2xl text-xl"
+                            placeholderTextColor="#5B667A"
+                            className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
                             onChangeText={(text) => setUsername(text)}
                         />
                     </View>
 
                     <View className="mt-4">
-                        <Text className="text-lg font-bold text-slate-700 mb-2">Password</Text>
+                        <Text className="text-sm font-semibold text-text-primary mb-2">Password</Text>
                         <TextInput
                             value={password}
                             placeholder="Enter your password"
-                            className="bg-slate-100 p-5 rounded-2xl text-xl"
+                            placeholderTextColor="#5B667A"
+                            className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
                             secureTextEntry={true}
                             onChangeText={(password) => setPassword(password)}
                         />
@@ -64,12 +66,13 @@ export default function LoginScreen({ onNavigateToSignUp }) {
                     <TouchableOpacity
                         onPress={onSignInPress}
                         disabled={loading}
-                        className={`mt-8 py-5 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+                        activeOpacity={0.8}
+                        className={`mt-8 h-[56px] rounded-[14px] items-center justify-center ${loading ? 'bg-primary/50' : 'bg-primary active:bg-primary-dark'}`}
                     >
                         {loading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text className="text-white font-extrabold text-2xl">Sign In</Text>
+                            <Text className="text-white font-bold text-lg">Sign In</Text>
                         )}
                     </TouchableOpacity>
 
@@ -77,14 +80,14 @@ export default function LoginScreen({ onNavigateToSignUp }) {
                         onPress={onNavigateToSignUp}
                         className="mt-6 items-center"
                     >
-                        <Text className="text-slate-500 text-lg">
-                            Don't have an account? <Text className="text-blue-600 font-bold">Sign up</Text>
+                        <Text className="text-text-muted text-base">
+                            Don't have an account? <Text className="text-primary font-bold">Sign up</Text>
                         </Text>
                     </TouchableOpacity>
                 </View>
 
                 <View className="mt-12 items-center">
-                    <Text className="text-slate-400">TaskMate v1.0.0-phase2</Text>
+                    <Text className="text-text-muted text-sm">TaskMate v1.0.0-phase2</Text>
                 </View>
             </View>
         </SafeAreaView>

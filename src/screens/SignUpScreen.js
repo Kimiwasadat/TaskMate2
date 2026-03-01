@@ -66,37 +66,39 @@ export default function SignUpScreen({
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           className="px-8"
         >
-          <View className="mb-12">
-            <Text className="text-5xl font-extrabold text-slate-900 mb-2">
+          <View className="mb-12 mt-8">
+            <Text className="text-3xl font-bold text-text-primary mb-2">
               Create Account
             </Text>
-            <Text className="text-xl text-slate-500">
+            <Text className="text-base text-text-muted">
               Join TaskMate and get started.
             </Text>
           </View>
 
           <View className="space-y-4">
             <View>
-              <Text className="text-lg font-bold text-slate-700 mb-2">
+              <Text className="text-sm font-semibold text-text-primary mb-2">
                 Username
               </Text>
               <TextInput
                 autoCapitalize="none"
                 value={username}
                 placeholder="Choose a username"
-                className="bg-slate-100 p-5 rounded-2xl text-xl"
+                placeholderTextColor="#5B667A"
+                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
                 onChangeText={(text) => setUsername(text)}
               />
             </View>
 
             <View className="mt-4">
-              <Text className="text-lg font-bold text-slate-700 mb-2">
+              <Text className="text-sm font-semibold text-text-primary mb-2">
                 Password
               </Text>
               <TextInput
                 value={password}
                 placeholder="Create a strong password"
-                className="bg-slate-100 p-5 rounded-2xl text-xl"
+                placeholderTextColor="#5B667A"
+                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
                 secureTextEntry={true}
                 onChangeText={(password) => setPassword(password)}
               />
@@ -105,12 +107,13 @@ export default function SignUpScreen({
             <TouchableOpacity
               onPress={onSignUpPress}
               disabled={loading}
-              className={`mt-8 py-5 rounded-2xl items-center justify-center ${loading ? "bg-blue-400" : "bg-blue-600"}`}
+              activeOpacity={0.8}
+              className={`mt-8 h-[56px] rounded-[14px] items-center justify-center ${loading ? "bg-primary/50" : "bg-primary active:bg-primary-dark"}`}
             >
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-white font-extrabold text-2xl">
+                <Text className="text-white font-bold text-lg">
                   Sign Up
                 </Text>
               )}
@@ -120,17 +123,17 @@ export default function SignUpScreen({
               onPress={onNavigateToLogin}
               className="mt-6 items-center"
             >
-              <Text className="text-slate-500 text-lg">
+              <Text className="text-text-muted text-base">
                 Already have an account?{" "}
-                <Text className="text-blue-600 font-bold">Log in instead</Text>
+                <Text className="text-primary font-bold">Log in instead</Text>
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={onNavigateBack}
-              className="mt-4 items-center"
+              className="mt-8 items-center"
             >
-              <Text className="text-slate-400 font-bold">← Change Role</Text>
+              <Text className="text-text-muted font-bold text-base">← Change Role</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

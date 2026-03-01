@@ -9,17 +9,18 @@ export default function TaskCompleteScreen({ navigation }) {
     }, []);
 
     return (
-        <SafeAreaView className="flex-1 bg-green-500 items-center justify-center p-6">
-            <View className="bg-white p-8 rounded-3xl w-full items-center shadow-lg">
+        <SafeAreaView className="flex-1 bg-accent items-center justify-center p-6">
+            <View className="bg-surface p-8 rounded-3xl w-full items-center shadow-md">
                 <Text className="text-6xl mb-4">🎉</Text>
-                <Text className="text-3xl font-extrabold text-slate-900 text-center mb-2">Great Job!</Text>
-                <Text className="text-xl text-slate-600 text-center mb-8">You finished the task.</Text>
+                <Text className="text-3xl font-bold text-text-primary text-center mb-2">Great Job!</Text>
+                <Text className="text-lg font-medium text-text-muted text-center mb-8">You finished the task.</Text>
 
                 <TouchableOpacity
-                    className="bg-green-600 w-full py-4 rounded-xl"
+                    className="bg-primary w-full h-[56px] rounded-[14px] justify-center items-center active:bg-primary-dark"
+                    activeOpacity={0.8}
                     onPress={() => navigation.navigate('Dashboard')}
                 >
-                    <Text className="text-white text-center font-bold text-xl">Back to Dashboard</Text>
+                    <Text className="text-white font-bold text-lg">Back to Dashboard</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

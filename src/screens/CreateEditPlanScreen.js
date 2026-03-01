@@ -50,7 +50,7 @@ export default function CreateEditPlanScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -58,23 +58,25 @@ export default function CreateEditPlanScreen({ navigation }) {
         <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
             className="p-2 -ml-2"
           >
-            <Text className="text-purple-600 font-bold text-lg">Cancel</Text>
+            <Text className="text-text-muted font-bold text-base">Cancel</Text>
           </TouchableOpacity>
-          <Text className="text-slate-800 font-extrabold text-xl">
+          <Text className="text-text-primary font-bold text-xl">
             New Plan
           </Text>
           <TouchableOpacity
             onPress={handleSavePlan}
             disabled={loading}
+            activeOpacity={0.7}
             className="p-2 -mr-2"
           >
             {loading ? (
-              <ActivityIndicator color="#9333ea" />
+              <ActivityIndicator color="#14B8B8" />
             ) : (
               <Text
-                className={`font-bold text-lg ${title.trim() ? "text-purple-600" : "text-slate-400"}`}
+                className={`font-bold text-lg ${title.trim() ? "text-primary" : "text-text-muted"}`}
               >
                 Save
               </Text>
@@ -87,29 +89,29 @@ export default function CreateEditPlanScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View className="mb-6">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
               Plan Title
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="e.g. Morning Route Delivery"
-              className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-lg font-semibold text-slate-800"
-              placeholderTextColor="#94a3b8"
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary shadow-sm"
+              placeholderTextColor="#5B667A"
               autoFocus
             />
           </View>
 
           <View className="mb-6">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2">
               Description (Optional)
             </Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder="Briefly describe the goal or context of this plan..."
-              className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-base text-slate-800 h-32"
-              placeholderTextColor="#94a3b8"
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary h-32 shadow-sm"
+              placeholderTextColor="#5B667A"
               multiline
               textAlignVertical="top"
             />

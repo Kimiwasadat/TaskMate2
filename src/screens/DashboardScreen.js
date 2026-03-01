@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { getAssignmentsForClient } from "../services/firestoreService";
+import LoadingLogo from "../components/LoadingLogo";
 export default function DashboardScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useAuth();
@@ -48,7 +49,8 @@ export default function DashboardScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        className="bg-white p-6 rounded-2xl mb-4 shadow-sm border border-slate-200"
+        className="bg-surface p-5 rounded-2xl mb-4 shadow-sm border border-border"
+        activeOpacity={0.7}
         onPress={() =>
           navigation.navigate("TaskGuidance", {
             assignmentId: item.id,
@@ -57,14 +59,14 @@ export default function DashboardScreen({ navigation }) {
         }
       >
         <View className="flex-row justify-between items-start mb-2">
-          <Text className="text-2xl font-bold text-slate-800 flex-1 mr-2">
+          <Text className="text-xl font-bold text-text-primary flex-1 mr-2">
             {plan.title || "Untitled Plan"}
           </Text>
           <View
-            className={`px-3 py-1 rounded-full ${item.status === "completed" ? "bg-green-100" : "bg-blue-100"}`}
+            className={`px-3 py-1 rounded-full ${item.status === "completed" ? "bg-accent/20" : "bg-primary/20"}`}
           >
             <Text
-              className={`font-semibold ${item.status === "completed" ? "text-green-800" : "text-blue-800"}`}
+              className={`font-semibold text-xs ${item.status === "completed" ? "text-accent-dark" : "text-primary-dark"}`}
             >
               {item.status === "completed"
                 ? "Done"
@@ -76,18 +78,18 @@ export default function DashboardScreen({ navigation }) {
         </View>
 
         {plan.description ? (
-          <Text className="text-lg text-slate-600 mb-4" numberOfLines={2}>
+          <Text className="text-base text-text-muted mb-4 mt-1" numberOfLines={2}>
             {plan.description}
           </Text>
         ) : null}
 
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mt-2">
           <View>
-            <Text className="text-slate-400 font-medium">
+            <Text className="text-text-muted font-medium text-sm">
               Steps: {plan.steps?.length || 0}
             </Text>
           </View>
-          <Text className="text-slate-500 font-medium">
+          <Text className="text-text-muted font-medium text-sm">
             {item.dueDate || "No Due Date"}
           </Text>
         </View>
@@ -97,32 +99,33 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View className="flex-1 items-center justify-center bg-background">
+        <LoadingLogo />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="p-6 flex-1">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-4xl font-extrabold text-slate-900">
+        <View className="flex-row justify-between items-center mb-2 mt-4">
+          <Text className="text-3xl font-bold text-text-primary">
             Hello, {user?.firstName || "Messenger"}!
           </Text>
-          <TouchableOpacity onPress={() => signOut()}>
-            <Text className="text-blue-600 font-bold text-lg">Sign Out</Text>
+          <TouchableOpacity onPress={() => signOut()} activeOpacity={0.7}>
+            <Text className="text-primary font-bold text-base">Sign Out</Text>
           </TouchableOpacity>
         </View>
         <View className="flex-row justify-between items-center mb-8">
-          <Text className="text-xl text-slate-600">
+          <Text className="text-lg font-semibold text-text-muted">
             Here are your tasks for today.
           </Text>
           <TouchableOpacity
-            className="bg-slate-200 px-3 py-1 rounded-lg"
+            className="bg-surface border border-border px-3 py-1 rounded-lg"
+            activeOpacity={0.7}
             onPress={() => navigation.navigate("Debug")}
           >
-            <Text className="text-slate-700 font-medium text-sm">
+            <Text className="text-text-primary font-medium text-sm">
               Debug Auth
             </Text>
           </TouchableOpacity>
@@ -136,7 +139,7 @@ export default function DashboardScreen({ navigation }) {
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={
             <View className="items-center justify-center py-20">
-              <Text className="text-slate-400 text-lg">
+              <Text className="text-text-muted text-lg text-center">
                 No tasks assigned yet.
               </Text>
             </View>

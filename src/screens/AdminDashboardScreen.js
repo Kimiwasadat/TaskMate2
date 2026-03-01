@@ -8,17 +8,17 @@ export default function AdminDashboardScreen({ navigation }) {
     const { signOut } = useAuth();
 
     return (
-        <SafeAreaView className="flex-1 bg-slate-50 p-6">
-            <View className="flex-row justify-between items-center mb-6">
-                <Text className="text-3xl font-extrabold text-slate-900">Admin Portal</Text>
-                <TouchableOpacity onPress={() => signOut()}>
-                    <Text className="text-blue-600 font-bold">Sign Out</Text>
+        <SafeAreaView className="flex-1 bg-background p-6">
+            <View className="flex-row justify-between items-center mb-6 mt-4">
+                <Text className="text-3xl font-bold text-text-primary">Admin Portal</Text>
+                <TouchableOpacity onPress={() => signOut()} activeOpacity={0.7}>
+                    <Text className="text-primary font-bold text-base">Sign Out</Text>
                 </TouchableOpacity>
             </View>
 
-            <View className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <Text className="text-lg text-slate-700 mb-2">Welcome Admin {user?.firstName}!</Text>
-                <Text className="text-sm text-slate-500 mb-6">
+            <View className="bg-surface p-5 rounded-2xl shadow-sm border border-border mt-4">
+                <Text className="text-xl font-bold text-text-primary mb-2">Welcome Admin {user?.firstName}!</Text>
+                <Text className="text-base text-text-muted mb-6">
                     This is a placeholder for the Admin Dashboard where you'll be able to manage all users, system settings, and analytics.
                 </Text>
 

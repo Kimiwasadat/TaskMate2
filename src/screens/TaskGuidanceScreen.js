@@ -14,6 +14,7 @@ import {
   getPlanById,
   updateAssignmentStatus,
 } from "../services/firestoreService";
+import LoadingLogo from "../components/LoadingLogo";
 
 export default function TaskGuidanceScreen({ route, navigation }) {
   const { user } = useUser();
@@ -123,53 +124,66 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View className="flex-1 items-center justify-center bg-background">
+        <LoadingLogo />
       </View>
     );
   }
 
   if (!plan || !plan.steps || plan.steps.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text>Plan not found or has no steps.</Text>
+      <View className="flex-1 items-center justify-center bg-background p-6">
+        <View className="bg-surface p-8 rounded-3xl w-full items-center border border-border shadow-sm">
+          <Text className="text-4xl mb-4">📭</Text>
+          <Text className="text-text-primary text-xl font-bold mb-2 text-center">Plan Unavailable</Text>
+          <Text className="text-text-muted text-center mb-8">
+            This plan could not be found or has no steps to complete.
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Dashboard")}
+            activeOpacity={0.8}
+            className="bg-primary w-full h-[56px] rounded-[14px] items-center justify-center"
+          >
+            <Text className="text-white font-bold text-lg">Back to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white flex-col">
+    <SafeAreaView className="flex-1 bg-background flex-col">
       {/* Header / Progress */}
-      <View className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-row justify-between items-center">
+      <View className="px-6 py-4 bg-surface border-b border-border flex-row justify-between items-center">
         <View>
-          <Text className="text-slate-500 font-bold text-lg">{plan.title}</Text>
-          <Text className="text-slate-500 font-medium text-sm">
+          <Text className="text-text-primary font-bold text-lg">{plan.title}</Text>
+          <Text className="text-text-muted font-medium text-sm">
             Step {currentStepIndex + 1} of {plan.steps.length}
           </Text>
         </View>
         <View className="flex-row items-center">
           {timeLeft > 0 && (
             <Text
-              className={`text-sm font-bold ${timeLeft < 300 ? "text-red-500" : "text-slate-400"} mr-4`}
+              className={`text-sm font-bold ${timeLeft < 300 ? "text-danger" : "text-text-muted"} mr-4`}
             >
               Total: {formatTime(timeLeft)}
             </Text>
           )}
           {stepTimeLeft > 0 && (
-            <Text className="text-sm font-bold text-blue-500">
+            <Text className="text-sm font-bold text-primary">
               ⏱ This Step: {formatTime(stepTimeLeft)}
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-blue-600 font-bold text-lg">Exit</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text className="text-danger font-bold text-base">Exit</Text>
         </TouchableOpacity>
       </View>
 
       {/* Main Content Area */}
       <View className="flex-1 px-6 justify-center">
         {currentStep?.mediaUrl ? (
-          <View className="w-full h-64 rounded-3xl mb-8 overflow-hidden bg-slate-100 border border-slate-200">
+          <View className="w-full h-64 rounded-3xl mb-8 overflow-hidden bg-surface/50 border border-border shadow-sm">
             {/* We will assume it is an image for now, later we can add Video support based on file extension */}
             <Image
               source={{ uri: currentStep.mediaUrl }}
@@ -178,15 +192,15 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             />
           </View>
         ) : (
-          <View className="w-full h-40 bg-slate-100 rounded-3xl mb-8 items-center justify-center border border-dashed border-slate-300">
-            <Text className="text-slate-400 font-medium">
+          <View className="w-full h-40 bg-surface rounded-3xl mb-8 items-center justify-center border border-dashed border-border shadow-sm">
+            <Text className="text-text-muted font-medium">
               {currentStep?.title || "Step Instruction"}
             </Text>
           </View>
         )}
 
         {/* Text Instruction - Large & Clear */}
-        <Text className="text-3xl font-extrabold text-slate-900 text-center leading-tight mb-8">
+        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-8">
           {currentStep?.instruction}
         </Text>
 
@@ -194,11 +208,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         <View className="flex-row justify-center mb-8">
           <TouchableOpacity
             onPress={speakText}
-            className={`flex-row items-center px-6 py-3 rounded-full ${isSpeaking ? "bg-orange-100" : "bg-blue-50"}`}
+            activeOpacity={0.7}
+            className={`flex-row items-center px-6 py-3 rounded-full ${isSpeaking ? "bg-primary/20" : "bg-surface border border-border"}`}
           >
             <Text className="text-3xl mr-3">{isSpeaking ? "🔊" : "🔈"}</Text>
             <Text
-              className={`text-lg font-bold ${isSpeaking ? "text-orange-700" : "text-blue-700"}`}
+              className={`text-lg font-bold ${isSpeaking ? "text-primary-dark" : "text-text-primary"}`}
             >
               {isSpeaking ? "Stop Reading" : "Read to Me"}
             </Text>
@@ -207,24 +222,26 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       </View>
 
       {/* Bottom Controls - BIG TARGETS */}
-      <View className="px-6 pb-8 pt-4 border-t border-slate-100 bg-white">
+      <View className="px-6 pb-8 pt-4 border-t border-border bg-background">
         <View className="flex-row gap-4">
           {/* Back Button (Small) */}
           {currentStepIndex > 0 && (
             <TouchableOpacity
               onPress={handlePrevStep}
-              className="flex-1 bg-slate-200 rounded-2xl items-center justify-center py-5"
+              activeOpacity={0.7}
+              className="flex-1 bg-surface border border-border rounded-[14px] items-center justify-center h-[56px]"
             >
-              <Text className="text-slate-600 font-bold text-xl">Back</Text>
+              <Text className="text-text-primary font-bold text-lg">Back</Text>
             </TouchableOpacity>
           )}
 
           {/* Next/Done Button (Huge) */}
           <TouchableOpacity
             onPress={handleNextStep}
-            className={`flex-[2] rounded-2xl items-center justify-center py-5 ${isLastStep ? "bg-green-600" : "bg-blue-600"}`}
+            activeOpacity={0.8}
+            className={`flex-[2] rounded-[14px] items-center justify-center h-[56px] ${isLastStep ? "bg-accent active:bg-accent-dark" : "bg-primary active:bg-primary-dark"}`}
           >
-            <Text className="text-white font-extrabold text-2xl">
+            <Text className="text-white font-bold text-lg">
               {isLastStep ? "FINISH TASK" : "NEXT STEP"}
             </Text>
           </TouchableOpacity>

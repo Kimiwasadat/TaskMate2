@@ -146,31 +146,33 @@ export default function AddEditStepScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        <View className="flex-row items-center justify-between px-6 pt-4 pb-2 border-b border-slate-100">
+        <View className="flex-row items-center justify-between px-6 pt-4 pb-2 border-b border-border">
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
             className="p-2 -ml-2"
           >
-            <Text className="text-purple-600 font-bold text-lg">Cancel</Text>
+            <Text className="text-text-muted font-bold text-base">Cancel</Text>
           </TouchableOpacity>
-          <Text className="text-slate-800 font-extrabold text-xl">
+          <Text className="text-text-primary font-bold text-xl">
             {isEditing ? "Edit Step" : "New Step"}
           </Text>
           <TouchableOpacity
             onPress={handleSaveStep}
             disabled={loading}
+            activeOpacity={0.7}
             className="p-2 -mr-2"
           >
             {loading ? (
-              <ActivityIndicator color="#9333ea" />
+              <ActivityIndicator color="#14B8B8" />
             ) : (
               <Text
-                className={`font-bold text-lg ${title.trim() && instruction.trim() ? "text-purple-600" : "text-slate-400"}`}
+                className={`font-bold text-lg ${title.trim() && instruction.trim() ? "text-primary" : "text-text-muted"}`}
               >
                 Save
               </Text>
@@ -183,60 +185,61 @@ export default function AddEditStepScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View className="mb-6">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
               Location / Phase *
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="e.g. Travel to Headquarters"
-              className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-lg font-semibold text-slate-800"
-              placeholderTextColor="#94a3b8"
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary shadow-sm"
+              placeholderTextColor="#5B667A"
             />
           </View>
 
           <View className="mb-6">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
               Instruction (What to do) *
             </Text>
             <TextInput
               value={instruction}
               onChangeText={setInstruction}
               placeholder="e.g. Find the supervisor and deliver the documents."
-              className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-base text-slate-800 h-24"
-              placeholderTextColor="#94a3b8"
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary h-24 shadow-sm"
+              placeholderTextColor="#5B667A"
               multiline
               textAlignVertical="top"
             />
           </View>
 
           <View className="mb-8">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
               Est. Duration (Minutes)
             </Text>
             <TextInput
               value={durationMinutes}
               onChangeText={setDurationMinutes}
               placeholder="e.g. 15"
-              className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-lg text-slate-800"
-              placeholderTextColor="#94a3b8"
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary shadow-sm"
+              placeholderTextColor="#5B667A"
               keyboardType="number-pad"
             />
           </View>
 
           <View className="mb-8">
-            <Text className="text-slate-700 font-bold text-sm uppercase tracking-wider mb-2">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
               Media Attachment
             </Text>
             {localMediaUri ? (
-              <View className="relative rounded-xl overflow-hidden mb-2 border border-slate-200">
+              <View className="relative rounded-xl overflow-hidden mb-2 border border-border shadow-sm">
                 <Image
                   source={{ uri: localMediaUri }}
-                  className="w-full h-48 bg-slate-100"
+                  className="w-full h-48 bg-surface/50"
                   resizeMode="cover"
                 />
                 <TouchableOpacity
-                  className="absolute top-2 right-2 bg-slate-900/70 p-2 rounded-full"
+                  className="absolute top-2 right-2 bg-text-primary/70 p-2 rounded-full"
+                  activeOpacity={0.7}
                   onPress={() => setLocalMediaUri(null)}
                 >
                   <Text className="text-white font-bold text-xs">✕ Remove</Text>
@@ -245,12 +248,13 @@ export default function AddEditStepScreen({ route, navigation }) {
             ) : (
               <TouchableOpacity
                 onPress={pickImage}
-                className="bg-purple-50 p-6 rounded-2xl border border-dashed border-purple-200 items-center justify-center"
+                activeOpacity={0.7}
+                className="bg-primary/5 p-6 rounded-2xl border border-dashed border-primary/30 items-center justify-center shadow-sm"
               >
-                <Text className="text-purple-600 font-bold mb-1">
+                <Text className="text-primary-dark font-bold mb-1">
                   + Attach Photo or Video
                 </Text>
-                <Text className="text-purple-400 text-xs">
+                <Text className="text-text-muted text-xs">
                   Tap to open gallery
                 </Text>
               </TouchableOpacity>
@@ -261,9 +265,10 @@ export default function AddEditStepScreen({ route, navigation }) {
             <TouchableOpacity
               onPress={handleDeleteStep}
               disabled={loading}
-              className="mt-4 mb-12 py-4 rounded-xl bg-red-50 items-center justify-center border border-red-200"
+              activeOpacity={0.8}
+              className="mt-4 mb-12 h-[56px] rounded-[14px] bg-danger/10 items-center justify-center border border-danger/20 shadow-sm"
             >
-              <Text className="text-red-600 font-bold text-lg">
+              <Text className="text-danger font-bold text-lg">
                 Delete Step
               </Text>
             </TouchableOpacity>

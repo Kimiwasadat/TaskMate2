@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@clerk/clerk-expo';
 import { coachListAssignments, getPlan } from '../services/backend';
+import LoadingLogo from '../components/LoadingLogo';
 
 export default function AssignmentListScreen({ navigation }) {
     const { user } = useUser();
@@ -40,43 +41,44 @@ export default function AssignmentListScreen({ navigation }) {
     };
 
     const renderItem = ({ item }) => (
-        <View className="bg-white p-5 rounded-2xl mb-4 shadow-sm border border-slate-200">
+        <View className="bg-surface p-5 rounded-2xl mb-4 shadow-sm border border-border">
             <View className="flex-row justify-between items-start mb-2">
-                <Text className="text-xl font-bold text-slate-800 flex-1">{item.planTitle}</Text>
-                <View className="bg-green-100 px-3 py-1 rounded-full">
-                    <Text className="text-xs font-semibold text-green-800">
+                <Text className="text-xl font-bold text-text-primary flex-1">{item.planTitle}</Text>
+                <View className="bg-accent/20 px-3 py-1 rounded-full">
+                    <Text className="text-xs font-semibold text-accent-dark">
                         {item.status.toUpperCase()}
                     </Text>
                 </View>
             </View>
-            <Text className="text-slate-600 mb-4 font-medium">Assigned to: {item.clientId}</Text>
+            <Text className="text-text-muted mb-4 font-medium mt-1">Assigned to: {item.clientId}</Text>
 
             <View className="flex-row justify-end space-x-3">
                 <TouchableOpacity
-                    className="bg-slate-100 px-4 py-2 rounded-lg"
+                    className="bg-surface border border-border px-4 py-2 rounded-[14px]"
+                    activeOpacity={0.7}
                     onPress={() => handlePauseRemove(item.assignmentId)}
                 >
-                    <Text className="text-slate-700 font-bold">Pause/Remove</Text>
+                    <Text className="text-text-primary font-bold text-sm">Pause/Remove</Text>
                 </TouchableOpacity>
             </View>
         </View>
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-slate-50 p-6">
-            <View className="flex-row justify-between items-center mb-6">
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text className="text-slate-500 font-bold text-lg">Back</Text>
+        <SafeAreaView className="flex-1 bg-background p-6">
+            <View className="flex-row justify-between items-center mb-6 mt-4">
+                <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                    <Text className="text-text-muted font-bold text-base">Back</Text>
                 </TouchableOpacity>
-                <Text className="text-2xl font-extrabold text-slate-900">Assignments</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Assignment')}>
-                    <Text className="text-blue-600 font-bold text-lg">New</Text>
+                <Text className="text-2xl font-bold text-text-primary">Assignments</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Assignment')} activeOpacity={0.7}>
+                    <Text className="text-primary font-bold text-base">New</Text>
                 </TouchableOpacity>
             </View>
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#2563eb" />
+                    <LoadingLogo />
                 </View>
             ) : (
                 <FlatList
@@ -86,9 +88,9 @@ export default function AssignmentListScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     ListEmptyComponent={
-                        <View className="items-center justify-center py-20 bg-white rounded-2xl border border-slate-200">
-                            <Text className="text-slate-400 text-lg">No active assignments.</Text>
-                            <Text className="text-slate-400 text-sm mt-2">Tap "New" to assign a plan to a client.</Text>
+                        <View className="items-center justify-center py-20 bg-surface rounded-2xl border border-border mt-4">
+                            <Text className="text-text-muted font-semibold text-base mb-1">No active assignments.</Text>
+                            <Text className="text-text-muted text-sm mt-2">Tap "New" to assign a plan to a client.</Text>
                         </View>
                     }
                 />
