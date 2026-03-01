@@ -14,6 +14,7 @@ import { useSignUp } from "@clerk/clerk-expo";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { saveUserToFirestore } from "../services/firestoreService";
+import TaskMateLogoStatic from "../components/TaskMateLogoStatic";
 
 export default function SignUpScreen({
   selectedRole,
@@ -57,7 +58,7 @@ export default function SignUpScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-primary">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -66,39 +67,40 @@ export default function SignUpScreen({
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           className="px-8"
         >
-          <View className="mb-12 mt-8">
-            <Text className="text-3xl font-bold text-text-primary mb-2">
+          <View className="mb-12 mt-8 items-center text-center">
+            <TaskMateLogoStatic variant="light" scale={0.7} showText={false} />
+            <Text className="text-4xl font-black text-white mt-4 mb-2 tracking-tight">
               Create Account
             </Text>
-            <Text className="text-base text-text-muted">
+            <Text className="text-base text-white/80 font-medium">
               Join TaskMate and get started.
             </Text>
           </View>
 
           <View className="space-y-4">
             <View>
-              <Text className="text-sm font-semibold text-text-primary mb-2">
+              <Text className="text-sm font-bold text-white mb-2 ml-1">
                 Username
               </Text>
               <TextInput
                 autoCapitalize="none"
                 value={username}
                 placeholder="Choose a username"
-                placeholderTextColor="#5B667A"
-                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                className="bg-primary-dark/40 border border-white/20 p-5 rounded-2xl text-base text-white font-medium shadow-sm"
                 onChangeText={(text) => setUsername(text)}
               />
             </View>
 
             <View className="mt-4">
-              <Text className="text-sm font-semibold text-text-primary mb-2">
+              <Text className="text-sm font-bold text-white mb-2 ml-1">
                 Password
               </Text>
               <TextInput
                 value={password}
                 placeholder="Create a strong password"
-                placeholderTextColor="#5B667A"
-                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                className="bg-primary-dark/40 border border-white/20 p-5 rounded-2xl text-base text-white font-medium shadow-sm"
                 secureTextEntry={true}
                 onChangeText={(password) => setPassword(password)}
               />
@@ -108,12 +110,12 @@ export default function SignUpScreen({
               onPress={onSignUpPress}
               disabled={loading}
               activeOpacity={0.8}
-              className={`mt-8 h-[56px] rounded-[14px] items-center justify-center ${loading ? "bg-primary/50" : "bg-primary active:bg-primary-dark"}`}
+              className={`mt-8 h-[56px] rounded-[16px] items-center justify-center shadow-lg ${loading ? "bg-white/70" : "bg-white active:bg-gray-100"}`}
             >
               {loading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="#14b8b8" />
               ) : (
-                <Text className="text-white font-bold text-lg">
+                <Text className="text-primary-dark font-black text-lg">
                   Sign Up
                 </Text>
               )}
@@ -123,9 +125,9 @@ export default function SignUpScreen({
               onPress={onNavigateToLogin}
               className="mt-6 items-center"
             >
-              <Text className="text-text-muted text-base">
+              <Text className="text-white/80 text-base font-medium">
                 Already have an account?{" "}
-                <Text className="text-primary font-bold">Log in instead</Text>
+                <Text className="text-white font-black underline">Log in instead</Text>
               </Text>
             </TouchableOpacity>
 
@@ -133,7 +135,7 @@ export default function SignUpScreen({
               onPress={onNavigateBack}
               className="mt-8 items-center"
             >
-              <Text className="text-text-muted font-bold text-base">← Change Role</Text>
+              <Text className="text-white/60 font-bold text-base">← Change Role</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

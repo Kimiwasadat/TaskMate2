@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { getAssignmentsForClient } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
+import DashboardHeader from "../components/DashboardHeader";
 export default function DashboardScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useAuth();
@@ -107,16 +108,18 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="p-6 flex-1">
-        <View className="flex-row justify-between items-center mb-2 mt-4">
-          <Text className="text-3xl font-bold text-text-primary">
-            Hello, {user?.firstName || "Messenger"}!
-          </Text>
-          <TouchableOpacity onPress={() => signOut()} activeOpacity={0.7}>
-            <Text className="text-primary font-bold text-base">Sign Out</Text>
+      <DashboardHeader
+        rightContent={
+          <TouchableOpacity onPress={() => signOut()} activeOpacity={0.7} className="bg-surface border border-border px-4 py-2 rounded-full shadow-sm">
+            <Text className="text-primary-dark font-bold text-sm">Sign Out</Text>
           </TouchableOpacity>
-        </View>
-        <View className="flex-row justify-between items-center mb-8">
+        }
+      />
+      <View className="px-6 flex-1">
+        <Text className="text-3xl font-black text-text-primary mb-2 mt-2">
+          Hi, {user?.firstName || "Messenger"}!
+        </Text>
+        <View className="flex-row justify-between items-center mb-8 mt-2">
           <Text className="text-lg font-semibold text-text-muted">
             Here are your tasks for today.
           </Text>

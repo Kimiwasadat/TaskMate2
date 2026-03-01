@@ -11,6 +11,7 @@ import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect } from "@react-navigation/native";
 import { getPlansByCoach } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
+import DashboardHeader from "../components/DashboardHeader";
 
 export default function CoachDashboardScreen({ navigation }) {
     const { user } = useUser();
@@ -82,23 +83,22 @@ export default function CoachDashboardScreen({ navigation }) {
 
     return (
         <View className="flex-1 bg-background">
-            <View className="px-6 pt-16 pb-8 bg-primary rounded-b-3xl">
-                <View className="flex-row justify-between items-center mb-4">
-                    <View>
-                        <Text className="text-white/80 text-sm font-semibold uppercase tracking-wider">
-                            Coach Dashboard
-                        </Text>
-                        <Text className="text-white text-2xl font-bold mt-1">
-                            Hello, {user?.firstName || user?.username || "Coach"}
-                        </Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={handleSignOut}
-                        activeOpacity={0.8}
-                        className="bg-primary-dark p-3 rounded-full"
-                    >
-                        <Text className="text-white font-bold text-xs">Log Out</Text>
-                    </TouchableOpacity>
+            <View className="pt-12 pb-8 bg-primary rounded-b-3xl">
+                <DashboardHeader
+                    variant="light"
+                    rightContent={
+                        <TouchableOpacity onPress={handleSignOut} activeOpacity={0.8} className="bg-primary-dark/50 border border-white/20 px-4 py-2 rounded-full">
+                            <Text className="text-white font-bold text-sm">Log Out</Text>
+                        </TouchableOpacity>
+                    }
+                />
+                <View className="px-6 mt-4">
+                    <Text className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">
+                        Coach Dashboard
+                    </Text>
+                    <Text className="text-white text-3xl font-black" numberOfLines={1}>
+                        Hi, {user?.firstName || user?.username || "Coach"}
+                    </Text>
                 </View>
             </View>
 
