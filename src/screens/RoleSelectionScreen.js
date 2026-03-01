@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons';
 import { ROLES } from "../auth/rbac";
 import TaskMateLogoStatic from "../components/TaskMateLogoStatic";
 
@@ -21,15 +22,18 @@ export default function RoleSelectionScreen({
           </Text>
         </View>
 
-        <View className="space-y-4">
+        <View className="space-y-12">
           <TouchableOpacity
             onPress={() => onSelectRole(ROLES.CLIENT)}
             activeOpacity={0.7}
             className="bg-primary-dark/40 border border-white/20 p-5 rounded-2xl shadow-sm"
           >
-            <Text className="text-xl font-black text-white mb-1">
-              Employee
-            </Text>
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="person-outline" size={24} color="white" />
+              <Text className="text-xl font-black text-white ml-2">
+                Employee
+              </Text>
+            </View>
             <Text className="text-white/80 font-medium">
               I am here to view and complete my assigned tasks.
             </Text>
@@ -40,9 +44,12 @@ export default function RoleSelectionScreen({
             activeOpacity={0.7}
             className="bg-primary-dark/40 border border-white/20 p-5 rounded-2xl shadow-sm"
           >
-            <Text className="text-xl font-black text-white mb-1">
-              Coach
-            </Text>
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="people-outline" size={24} color="white" />
+              <Text className="text-xl font-black text-white ml-2">
+                Coach
+              </Text>
+            </View>
             <Text className="text-white/80 font-medium">
               I am here to create plans and assign them to employees.
             </Text>
@@ -53,9 +60,12 @@ export default function RoleSelectionScreen({
             activeOpacity={0.7}
             className="bg-primary-dark/40 border border-white/20 p-5 rounded-2xl shadow-sm"
           >
-            <Text className="text-xl font-black text-white mb-1">
-              Admin
-            </Text>
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="shield-outline" size={24} color="white" />
+              <Text className="text-xl font-black text-white ml-2">
+                Admin
+              </Text>
+            </View>
             <Text className="text-white/80 font-medium">
               I am here to oversee the organization and manage users.
             </Text>
