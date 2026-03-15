@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
 import {
   getPlansByCoach,
-  getAllEmployees,
+  getAssignedEmployeesForCoach,
   createAssignment,
 } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
@@ -34,7 +34,7 @@ export default function AssignPlanScreen({ navigation }) {
         // Fetch both lists concurrently for speed
         const [fetchedPlans, fetchedEmployees] = await Promise.all([
           getPlansByCoach(user.id),
-          getAllEmployees(),
+          getAssignedEmployeesForCoach(user.id),
         ]);
 
         setPlans(fetchedPlans);
@@ -172,15 +172,22 @@ export default function AssignPlanScreen({ navigation }) {
           onPress={handleAssignPlan}
           disabled={assigning || !selectedPlanId || !selectedEmployeeId}
           activeOpacity={0.8}
-          className={`w-full h-[56px] rounded-[14px] items-center justify-center ${!selectedPlanId || !selectedEmployeeId
-            ? "bg-surface border border-border"
-            : "bg-accent active:bg-accent-dark"
-            }`}
+          className={`w-full h-[56px] rounded-[14px] items-center justify-center ${
+            !selectedPlanId || !selectedEmployeeId
+              ? "bg-surface border border-border"
+              : "bg-accent active:bg-accent-dark"
+          }`}
         >
           {assigning ? (
-            <ActivityIndicator color={!selectedPlanId || !selectedEmployeeId ? "#5B667A" : "white"} />
+            <ActivityIndicator
+              color={
+                !selectedPlanId || !selectedEmployeeId ? "#5B667A" : "white"
+              }
+            />
           ) : (
-            <Text className={`font-bold text-lg ${!selectedPlanId || !selectedEmployeeId ? "text-text-muted" : "text-white"}`}>
+            <Text
+              className={`font-bold text-lg ${!selectedPlanId || !selectedEmployeeId ? "text-text-muted" : "text-white"}`}
+            >
               {!selectedPlanId || !selectedEmployeeId
                 ? "Select both fields to assign"
                 : "Create Assignment"}

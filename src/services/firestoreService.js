@@ -9,6 +9,8 @@ import {
   query,
   where,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -65,6 +67,66 @@ export const getAllEmployees = async () => {
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Error fetching employees:", error);
+    return [];
+  }
+};
+
+export const getAllCoaches = async () => {
+  try {
+    const q = query(collection(db, "users"), where("role", "==", "coach"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching coaches:", error);
+    return [];
+  }
+};
+
+export const assignEmployeeToCoach = async (coachId, employeeId) => {
+  try {
+    const coachRef = doc(db, "users", coachId);
+    await updateDoc(coachRef, {
+      assignedEmployees: arrayUnion(employeeId),
+    });
+  } catch (error) {
+    console.error("Error assigning employee to coach:", error);
+    throw error;
+  }
+};
+
+export const unassignEmployeeFromCoach = async (coachId, employeeId) => {
+  try {
+    const coachRef = doc(db, "users", coachId);
+    await updateDoc(coachRef, {
+      assignedEmployees: arrayRemove(employeeId),
+    });
+  } catch (error) {
+    console.error("Error unassigning employee from coach:", error);
+    throw error;
+  }
+};
+
+export const getAssignedEmployeesForCoach = async (coachId) => {
+  try {
+    const coachDoc = await getDoc(doc(db, "users", coachId));
+    if (!coachDoc.exists()) return [];
+
+    const coachData = coachDoc.data();
+    const assignedIds = coachData.assignedEmployees || [];
+
+    if (assignedIds.length === 0) return [];
+
+    // Fetch the actual user documents for these employee IDs
+    const employeePromises = assignedIds.map((id) =>
+      getDoc(doc(db, "users", id)),
+    );
+    const employeeDocs = await Promise.all(employeePromises);
+
+    return employeeDocs
+      .filter((docSnap) => docSnap.exists())
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  } catch (error) {
+    console.error("Error fetching assigned employees:", error);
     return [];
   }
 };
