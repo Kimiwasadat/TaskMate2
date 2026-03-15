@@ -61,10 +61,35 @@ export default function AdminDashboardScreen() {
         // Unassign
         await unassignEmployeeFromCoach(selectedCoach.id, employeeId);
         setAssignedIds((prev) => prev.filter((id) => id !== employeeId));
+        setCoaches((prevCoaches) =>
+          prevCoaches.map((coach) =>
+            coach.id === selectedCoach.id
+              ? {
+                  ...coach,
+                  assignedEmployees: (coach.assignedEmployees || []).filter(
+                    (id) => id !== employeeId,
+                  ),
+                }
+              : coach,
+          ),
+        );
       } else {
         // Assign
         await assignEmployeeToCoach(selectedCoach.id, employeeId);
         setAssignedIds((prev) => [...prev, employeeId]);
+        setCoaches((prevCoaches) =>
+          prevCoaches.map((coach) =>
+            coach.id === selectedCoach.id
+              ? {
+                  ...coach,
+                  assignedEmployees: [
+                    ...(coach.assignedEmployees || []),
+                    employeeId,
+                  ],
+                }
+              : coach,
+          ),
+        );
       }
     } catch (error) {
       Alert.alert("Error", "Could not update assignment.");
