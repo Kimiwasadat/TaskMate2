@@ -115,18 +115,18 @@ export default function CoachDashboardScreen({ navigation }) {
                             <Text className="text-white font-bold text-sm">+ New</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className="bg-surface border border-border px-3 py-1.5 rounded-full shadow-sm"
+                            className="bg-primary px-3 py-1.5 rounded-full shadow-sm"
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate("CoachProgress")}
                         >
-                            <Text className="text-text-primary font-bold text-sm">Progress</Text>
+                            <Text className="text-white font-bold text-sm">Progress</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className="bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full shadow-sm"
+                            className="bg-primary px-3 py-1.5 rounded-full shadow-sm"
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate("AssignPlan")}
                         >
-                            <Text className="text-primary-dark font-bold text-sm">Assign</Text>
+                            <Text className="text-white font-bold text-sm">Assign</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
