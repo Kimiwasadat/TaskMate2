@@ -6,6 +6,7 @@ import {
     FlatList,
     ActivityIndicator,
     Alert,
+    ScrollView,
 } from "react-native";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect } from "@react-navigation/native";
