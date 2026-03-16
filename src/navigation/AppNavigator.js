@@ -12,7 +12,6 @@ import TaskGuidanceScreen from "../screens/TaskGuidanceScreen";
 import TaskCompleteScreen from "../screens/TaskCompleteScreen";
 import CoachDashboardScreen from "../screens/CoachDashboardScreen";
 import AdminDashboardScreen from "../screens/AdminDashboardScreen";
-import DebugScreen from "../screens/DebugScreen";
 import PlanDetailScreen from "../screens/PlanDetailScreen";
 import CreateEditPlanScreen from "../screens/CreateEditPlanScreen";
 import AssignmentListScreen from "../screens/AssignmentListScreen";
@@ -34,7 +33,6 @@ function ClientStack() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="TaskGuidance" component={TaskGuidanceScreen} />
         <Stack.Screen name="TaskComplete" component={TaskCompleteScreen} />
-        <Stack.Screen name="Debug" component={DebugScreen} />
       </Stack.Navigator>
     </RequireRole>
   );
@@ -56,7 +54,6 @@ function CoachStack() {
         <Stack.Screen name="AssignPlan" component={AssignPlanScreen} />
         <Stack.Screen name="CoachProgress" component={CoachProgressScreen} />
         <Stack.Screen name="AddEditStep" component={AddEditStepScreen} />
-        <Stack.Screen name="Debug" component={DebugScreen} />
       </Stack.Navigator>
     </RequireRole>
   );
@@ -71,7 +68,6 @@ function AdminStack() {
         initialRouteName="AdminDashboard"
       >
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-        <Stack.Screen name="Debug" component={DebugScreen} />
       </Stack.Navigator>
     </RequireRole>
   );

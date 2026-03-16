@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
@@ -24,15 +24,7 @@ export default function DashboardScreen({ navigation }) {
         try {
           const fetchedTasks = await getAssignmentsForClient(user.id);
           console.log("---- FOUND DB ASSIGNMENTS:", fetchedTasks);
-          
-          // Sort tasks: put 'completed' tasks at the bottom
-          const sortedTasks = (fetchedTasks || []).sort((a, b) => {
-            if (a.status === "completed" && b.status !== "completed") return 1;
-            if (a.status !== "completed" && b.status === "completed") return -1;
-            return 0;
-          });
-          
-          setTasks(sortedTasks);
+          setTasks(fetchedTasks || []);
         } catch (error) {
           console.error("Error fetching tasks:", error);
           setTasks([]);
@@ -55,10 +47,11 @@ export default function DashboardScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const plan = item.planDetails || {};
+    const isCompleted = item.status === "completed";
 
     return (
       <TouchableOpacity
-        className="bg-surface p-5 rounded-2xl mb-4 shadow-sm border border-border"
+        className={`bg-surface p-5 rounded-2xl mb-4 shadow-sm border ${isCompleted ? 'border-border/50 opacity-80' : 'border-border border-l-4 border-l-primary'}`}
         activeOpacity={0.7}
         onPress={() =>
           navigation.navigate("TaskGuidance", {
@@ -68,16 +61,18 @@ export default function DashboardScreen({ navigation }) {
         }
       >
         <View className="flex-row justify-between items-start mb-2">
-          <Text className="text-xl font-bold text-text-primary flex-1 mr-2">
+          <Text 
+            className={`text-xl font-bold flex-1 mr-2 ${isCompleted ? 'text-text-primary/70 line-through' : 'text-text-primary'}`}
+          >
             {plan.title || "Untitled Plan"}
           </Text>
           <View
-            className={`px-3 py-1 rounded-full ${item.status === "completed" ? "bg-accent/20" : "bg-primary/20"}`}
+            className={`px-3 py-1 rounded-full ${isCompleted ? "bg-accent/20" : "bg-primary/20"}`}
           >
             <Text
-              className={`font-semibold text-xs ${item.status === "completed" ? "text-accent-dark" : "text-primary-dark"}`}
+              className={`font-semibold text-xs ${isCompleted ? "text-accent-dark" : "text-primary-dark"}`}
             >
-              {item.status === "completed"
+              {isCompleted
                 ? "Done"
                 : item.status === "in_progress"
                   ? "Started"
@@ -106,6 +101,21 @@ export default function DashboardScreen({ navigation }) {
     );
   };
 
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View className="bg-background/95 py-3 mb-2 mt-4 backdrop-blur-md">
+      <Text className="text-lg font-bold text-text-primary">{title}</Text>
+    </View>
+  );
+
+  // Group tasks into active and completed sections
+  const activeTasks = tasks.filter(t => t.status !== "completed");
+  const completedTasks = tasks.filter(t => t.status === "completed");
+  
+  const sections = [
+    { title: "To Do & Started", data: activeTasks },
+    ...(completedTasks.length > 0 ? [{ title: "Done", data: completedTasks }] : [])
+  ].filter(section => section.data.length > 0);
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
@@ -127,35 +137,31 @@ export default function DashboardScreen({ navigation }) {
         <Text className="text-3xl font-black text-text-primary mb-2 mt-2">
           Hi, {user?.firstName || "Messenger"}!
         </Text>
-        <View className="flex-row justify-between items-center mb-8 mt-2">
-          <Text className="text-lg font-semibold text-text-muted">
+        <View className="flex-row justify-between items-center mb-4 mt-2">
+          <Text className="text-lg font-semibold text-text-muted flex-1">
             Here are your tasks for today.
           </Text>
-          <TouchableOpacity
-            className="bg-surface border border-border px-3 py-1 rounded-lg"
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate("Debug")}
-          >
-            <Text className="text-text-primary font-medium text-sm">
-              Debug Auth
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={tasks}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          ListEmptyComponent={
-            <View className="items-center justify-center py-20">
-              <Text className="text-text-muted text-lg text-center">
-                No tasks assigned yet.
-              </Text>
-            </View>
-          }
-        />
+        {sections.length > 0 ? (
+          <SectionList
+            sections={sections}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            stickySectionHeadersEnabled={false}
+          />
+        ) : (
+          <View className="items-center justify-center py-20 flex-1">
+            <Text className="text-4xl mb-4">📭</Text>
+            <Text className="text-text-primary text-xl font-bold mb-2">You're all caught up!</Text>
+            <Text className="text-text-muted text-center max-w-[250px]">
+              No tasks are currently assigned to you. Enjoy your day!
+            </Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

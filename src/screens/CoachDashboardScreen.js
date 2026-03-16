@@ -104,8 +104,13 @@ export default function CoachDashboardScreen({ navigation }) {
 
             <View className="flex-1 px-6 pt-6 -mt-2">
                 <View className="flex-row justify-between items-center mb-6">
-                    <Text className="text-2xl font-bold text-text-primary">Your Plans</Text>
-                    <View className="flex-row">
+                    <Text className="text-2xl font-bold text-text-primary mr-4">Your Plans</Text>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={{ paddingRight: 20 }}
+                        className="flex-row"
+                    >
                         <TouchableOpacity
                             className="bg-surface border border-border px-4 py-2 rounded-full mr-2"
                             activeOpacity={0.7}
@@ -127,7 +132,7 @@ export default function CoachDashboardScreen({ navigation }) {
                         >
                             <Text className="text-white font-bold text-sm">+ New</Text>
                         </TouchableOpacity>
-                    </View>
+                    </ScrollView>
                 </View>
 
                 {loading ? (
