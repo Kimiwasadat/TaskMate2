@@ -24,7 +24,15 @@ export default function DashboardScreen({ navigation }) {
         try {
           const fetchedTasks = await getAssignmentsForClient(user.id);
           console.log("---- FOUND DB ASSIGNMENTS:", fetchedTasks);
-          setTasks(fetchedTasks || []);
+          
+          // Sort tasks: put 'completed' tasks at the bottom
+          const sortedTasks = (fetchedTasks || []).sort((a, b) => {
+            if (a.status === "completed" && b.status !== "completed") return 1;
+            if (a.status !== "completed" && b.status === "completed") return -1;
+            return 0;
+          });
+          
+          setTasks(sortedTasks);
         } catch (error) {
           console.error("Error fetching tasks:", error);
           setTasks([]);
