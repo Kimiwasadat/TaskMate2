@@ -8,6 +8,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
 import { useUser } from "@clerk/clerk-expo";
 import { generateAndPlayAudio } from "../services/ttsService";
 import { getTaskHelp } from "../services/aiService";
@@ -114,6 +115,49 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       }
     };
   }, [currentStepIndex, plan]);
+
+  // Listen for the notification to fire, and read it aloud using the natural voice
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
+      // If the notification TITLE contains our Stay on Track identifier
+      if (notification.request.content.title?.includes("Stay on Track")) {
+        const textToSpeak = notification.request.content.body;
+        
+        // Stop any current audio
+        if (isSpeaking && currentSound) {
+          await currentSound.unloadAsync();
+          setCurrentSound(null);
+        }
+        
+        // Generate and play the natural voice
+        setIsSpeaking(true);
+        try {
+          const sound = await generateAndPlayAudio(textToSpeak);
+          if (sound) {
+            setCurrentSound(sound);
+            sound.setOnPlaybackStatusUpdate((status) => {
+              if (status.didJustFinish) {
+                setIsSpeaking(false);
+                sound.unloadAsync();
+                setCurrentSound(null);
+              }
+            });
+          } else {
+            setIsSpeaking(false);
+          }
+        } catch (error) {
+          setIsSpeaking(false);
+          console.error("Audio generation failed for reminder:", error);
+        }
+      }
+    });
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [currentSound, isSpeaking]);
 
   const speakText = async () => {
     const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
