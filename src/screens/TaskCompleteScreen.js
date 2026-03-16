@@ -1,11 +1,36 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Speech from 'expo-speech';
+import { generateAndPlayAudio } from "../services/ttsService";
 
 export default function TaskCompleteScreen({ navigation }) {
     useEffect(() => {
-        Speech.speak("Great job! You have finished this task.", { rate: 1.0 });
+        let currentSound = null;
+
+        const playCongrats = async () => {
+            try {
+                const sound = await generateAndPlayAudio("Great job! You have finished this task.");
+                if (sound) {
+                    currentSound = sound;
+                    sound.setOnPlaybackStatusUpdate((status) => {
+                        if (status.didJustFinish) {
+                            sound.unloadAsync();
+                            currentSound = null;
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Congrats audio failed:", err);
+            }
+        };
+
+        playCongrats();
+
+        return () => {
+            if (currentSound) {
+                currentSound.unloadAsync();
+            }
+        };
     }, []);
 
     return (
