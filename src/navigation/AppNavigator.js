@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useUser } from "@clerk/clerk-expo";
 import RequireRole from "../components/RequireRole";
 import { normalizeRole, ROLES } from "../auth/rbac";
+import { registerForPushNotificationsAsync } from "../services/notificationService";
+import { saveUserPushToken } from "../services/firestoreService";
 
 import DashboardScreen from "../screens/DashboardScreen";
 import TaskGuidanceScreen from "../screens/TaskGuidanceScreen";
@@ -77,6 +79,16 @@ function AdminStack() {
 
 export default function AppNavigator() {
   const { user, isLoaded } = useUser();
+
+  useEffect(() => {
+    if (user) {
+      registerForPushNotificationsAsync().then((token) => {
+        if (token) {
+          saveUserPushToken(user.id, token);
+        }
+      });
+    }
+  }, [user]);
 
   if (!isLoaded || !user) return null;
 

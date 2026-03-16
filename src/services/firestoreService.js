@@ -60,6 +60,29 @@ export const saveUserToFirestore = async (userId, role, username) => {
   }
 };
 
+export const saveUserPushToken = async (userId, token) => {
+  if (!token) return;
+  try {
+    const userRef = doc(db, "users", userId);
+    await setDoc(userRef, { expoPushToken: token }, { merge: true });
+  } catch (error) {
+    console.error("Error saving push token:", error);
+  }
+};
+
+export const getUserPushToken = async (userId) => {
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    if (userDoc.exists()) {
+      return userDoc.data().expoPushToken;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching push token:", error);
+    return null;
+  }
+};
+
 export const getAllEmployees = async () => {
   try {
     const q = query(collection(db, "users"), where("role", "==", "client"));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import { getTaskHelp } from "../services/aiService";
 import {
   getPlanById,
   updateAssignmentStatus,
+  getUserPushToken,
 } from "../services/firestoreService";
+import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
 
 export default function TaskGuidanceScreen({ route, navigation }) {
@@ -31,6 +33,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // AI UI states
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
+
+  // Reminders
+  const activeReminderRef = useRef(null);
 
   useEffect(() => {
     const fetchPlanDetails = async () => {
@@ -86,6 +91,29 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   const currentStep = plan?.steps?.[currentStepIndex];
   const isLastStep = currentStepIndex === (plan?.steps?.length || 0) - 1;
+
+  // Setup idle reminder for each step
+  useEffect(() => {
+    const setupReminder = async () => {
+      if (activeReminderRef.current) {
+        await cancelReminder(activeReminderRef.current);
+        activeReminderRef.current = null;
+      }
+      if (plan && currentStep) {
+        const id = await scheduleIdleReminder(currentStep.instruction, 30);
+        activeReminderRef.current = id;
+      }
+    };
+
+    setupReminder();
+
+    return () => {
+      if (activeReminderRef.current) {
+        cancelReminder(activeReminderRef.current);
+        activeReminderRef.current = null;
+      }
+    };
+  }, [currentStepIndex, plan]);
 
   const speakText = async () => {
     const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
@@ -172,6 +200,24 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       if (isLastStep) {
         // If it's the last step, mark the entire assignment as completed
         await updateAssignmentStatus(assignmentId, "completed");
+
+        // Notify the coach
+        try {
+          if (plan.coachId) {
+            const coachToken = await getUserPushToken(plan.coachId);
+            if (coachToken) {
+              const employeeName = user?.firstName || "Your employee";
+              await sendPushNotification(
+                coachToken, 
+                "Task Completed! 🎉", 
+                `${employeeName} just finished '${plan.title}'!`
+              );
+            }
+          }
+        } catch (notifErr) {
+          console.error("Failed to notify coach:", notifErr);
+        }
+
         navigation.replace("TaskComplete");
       } else {
         // If we are just starting the first step, mark assignment as in_progress
