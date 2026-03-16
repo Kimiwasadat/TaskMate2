@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
-import * as Speech from "expo-speech";
+import { generateAndPlayAudio } from "../services/ttsService";
+import { getTaskHelp } from "../services/aiService";
 import {
   getPlanById,
   updateAssignmentStatus,
@@ -23,8 +24,13 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentSound, setCurrentSound] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [stepTimeLeft, setStepTimeLeft] = useState(0);
+
+  // AI UI states
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState(null);
 
   useEffect(() => {
     const fetchPlanDetails = async () => {
@@ -43,11 +49,16 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     };
 
     fetchPlanDetails();
-
-    return () => {
-      Speech.stop();
-    };
   }, [planId]);
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (currentSound) {
+        currentSound.unloadAsync();
+      }
+    };
+  }, [currentSound]);
 
   // Handle initial step time when task/step index loads
   useEffect(() => {
@@ -76,26 +87,86 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const currentStep = plan?.steps?.[currentStepIndex];
   const isLastStep = currentStepIndex === (plan?.steps?.length || 0) - 1;
 
-  const speakText = () => {
+  const speakText = async () => {
     const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
     if (!textToSpeak) return;
 
     if (isSpeaking) {
-      Speech.stop();
+      if (currentSound) {
+        await currentSound.unloadAsync();
+        setCurrentSound(null);
+      }
       setIsSpeaking(false);
     } else {
       setIsSpeaking(true);
-      Speech.speak(textToSpeak, {
-        onDone: () => setIsSpeaking(false),
-        onStopped: () => setIsSpeaking(false),
-        rate: 0.9,
-      });
+      try {
+        const sound = await generateAndPlayAudio(textToSpeak);
+        if (sound) {
+          setCurrentSound(sound);
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.didJustFinish) {
+              setIsSpeaking(false);
+              sound.unloadAsync();
+              setCurrentSound(null);
+            }
+          });
+        } else {
+          setIsSpeaking(false);
+        }
+      } catch (error) {
+        setIsSpeaking(false);
+        console.error("Audio generation failed:", error);
+      }
+    }
+  };
+
+  const handleAskAI = async () => {
+    // 1. Stop any current audio
+    if (isSpeaking) {
+      if (currentSound) {
+        await currentSound.unloadAsync();
+        setCurrentSound(null);
+      }
+      setIsSpeaking(false);
+    }
+
+    // 2. Load the AI tip
+    setAiLoading(true);
+    setAiResponse(null);
+
+    const helpText = await getTaskHelp(plan.title, currentStep?.instruction);
+    setAiResponse(helpText);
+    setAiLoading(false);
+
+    // 3. Play the AI tip in a natural voice instantly
+    setIsSpeaking(true);
+    try {
+      const sound = await generateAndPlayAudio(helpText);
+      if (sound) {
+        setCurrentSound(sound);
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            setIsSpeaking(false);
+            sound.unloadAsync();
+            setCurrentSound(null);
+          }
+        });
+      } else {
+        setIsSpeaking(false);
+      }
+    } catch (error) {
+      setIsSpeaking(false);
+      console.error("Audio generation failed for AI help:", error);
     }
   };
 
   const handleNextStep = async () => {
-    Speech.stop();
+    if (currentSound) {
+      await currentSound.unloadAsync();
+      setCurrentSound(null);
+    }
     setIsSpeaking(false);
+    setAiResponse(null);
 
     try {
       if (isLastStep) {
@@ -114,9 +185,13 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
   };
 
-  const handlePrevStep = () => {
-    Speech.stop();
+  const handlePrevStep = async () => {
+    if (currentSound) {
+      await currentSound.unloadAsync();
+      setCurrentSound(null);
+    }
     setIsSpeaking(false);
+    setAiResponse(null);
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
     }
@@ -135,7 +210,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       <View className="flex-1 items-center justify-center bg-background p-6">
         <View className="bg-surface p-8 rounded-3xl w-full items-center border border-border shadow-sm">
           <Text className="text-4xl mb-4">📭</Text>
-          <Text className="text-text-primary text-xl font-bold mb-2 text-center">Plan Unavailable</Text>
+          <Text className="text-text-primary text-xl font-bold mb-2 text-center">
+            Plan Unavailable
+          </Text>
           <Text className="text-text-muted text-center mb-8">
             This plan could not be found or has no steps to complete.
           </Text>
@@ -144,7 +221,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             activeOpacity={0.8}
             className="bg-primary w-full h-[56px] rounded-[14px] items-center justify-center"
           >
-            <Text className="text-white font-bold text-lg">Back to Dashboard</Text>
+            <Text className="text-white font-bold text-lg">
+              Back to Dashboard
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -156,7 +235,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       {/* Header / Progress */}
       <View className="px-6 py-4 bg-surface border-b border-border flex-row justify-between items-center">
         <View>
-          <Text className="text-text-primary font-bold text-lg">{plan.title}</Text>
+          <Text className="text-text-primary font-bold text-lg">
+            {plan.title}
+          </Text>
           <Text className="text-text-muted font-medium text-sm">
             Step {currentStepIndex + 1} of {plan.steps.length}
           </Text>
@@ -175,7 +256,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
           <Text className="text-danger font-bold text-base">Exit</Text>
         </TouchableOpacity>
       </View>
@@ -204,19 +288,55 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           {currentStep?.instruction}
         </Text>
 
+        {/* AI Response Box */}
+        {aiLoading && (
+          <View className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 items-center shadow-sm">
+            <ActivityIndicator size="small" color="#9333ea" />
+            <Text className="text-purple-700 font-bold mt-3 text-lg">
+              Thinking of a tip...
+            </Text>
+          </View>
+        )}
+
+        {aiResponse && !aiLoading && (
+          <View className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <Text className="text-2xl mr-2">🤖</Text>
+              <Text className="font-bold text-purple-900 text-lg">
+                AI Helper
+              </Text>
+            </View>
+            <Text className="text-purple-800 text-xl leading-relaxed font-medium">
+              {aiResponse}
+            </Text>
+          </View>
+        )}
+
         {/* Accessibility Toolbar */}
         <View className="flex-row justify-center mb-8">
           <TouchableOpacity
             onPress={speakText}
             activeOpacity={0.7}
-            className={`flex-row items-center px-6 py-3 rounded-full ${isSpeaking ? "bg-primary/20" : "bg-surface border border-border"}`}
+            className={`flex-row items-center px-6 py-3 rounded-full mr-4 ${isSpeaking && !aiResponse ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
           >
-            <Text className="text-3xl mr-3">{isSpeaking ? "🔊" : "🔈"}</Text>
-            <Text
-              className={`text-lg font-bold ${isSpeaking ? "text-primary-dark" : "text-text-primary"}`}
-            >
-              {isSpeaking ? "Stop Reading" : "Read to Me"}
+            <Text className="text-3xl mr-3">
+              {isSpeaking && !aiResponse ? "🔊" : "🔈"}
             </Text>
+            <Text
+              className={`text-lg font-bold ${isSpeaking && !aiResponse ? "text-primary-dark" : "text-text-primary"}`}
+            >
+              Read
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleAskAI}
+            disabled={aiLoading}
+            activeOpacity={0.7}
+            className={`flex-row items-center px-6 py-3 rounded-full border shadow-sm ${isSpeaking && aiResponse ? "bg-purple-200 border-purple-400" : "bg-purple-100 border-purple-200"}`}
+          >
+            <Text className="text-2xl mr-3">✨</Text>
+            <Text className="text-purple-800 text-lg font-bold">Help</Text>
           </TouchableOpacity>
         </View>
       </View>
