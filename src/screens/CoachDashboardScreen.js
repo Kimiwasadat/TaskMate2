@@ -105,26 +105,24 @@ export default function CoachDashboardScreen({ navigation }) {
 
             <View className="flex-1 px-6 pt-6 -mt-2">
                 <View className="mb-6">
-                    <View className="flex-row justify-between items-center mb-3">
-                        <Text className="text-2xl font-bold text-text-primary">Your Plans</Text>
+                    <Text className="text-2xl font-bold text-text-primary mb-3">Your Plans</Text>
+                    <View className="flex-row flex-wrap gap-2">
                         <TouchableOpacity
-                            className="bg-primary px-4 py-2 rounded-full shadow-sm"
+                            className="bg-primary px-3 py-1.5 rounded-full shadow-sm"
                             activeOpacity={0.8}
                             onPress={() => navigation.navigate("CreateEditPlan")}
                         >
-                            <Text className="text-white font-bold text-sm">+ New Plan</Text>
+                            <Text className="text-white font-bold text-sm">+ New</Text>
                         </TouchableOpacity>
-                    </View>
-                    <View className="flex-row">
                         <TouchableOpacity
-                            className="bg-surface border border-border px-4 py-2 rounded-full mr-2 shadow-sm"
+                            className="bg-surface border border-border px-3 py-1.5 rounded-full shadow-sm"
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate("CoachProgress")}
                         >
                             <Text className="text-text-primary font-bold text-sm">Progress</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className="bg-primary/10 border border-primary/20 px-4 py-2 rounded-full mr-2 shadow-sm"
+                            className="bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full shadow-sm"
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate("AssignPlan")}
                         >
