@@ -71,7 +71,9 @@ export async function scheduleIdleReminder(taskName, delaySeconds = 30) {
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: delaySeconds, // 30 seconds for testing as requested
+        repeats: false,
       },
     });
     return identifier;
