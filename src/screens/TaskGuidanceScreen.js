@@ -323,35 +323,42 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   return (
     <SafeAreaView className="flex-1 bg-background flex-col">
       {/* Header / Progress */}
-      <View className="px-6 py-4 bg-surface border-b border-border flex-row justify-between items-center">
-        <View>
-          <Text className="text-text-primary font-bold text-lg">
+      <View className="px-6 py-4 bg-surface border-b border-border">
+        {/* Top Row: Title and Exit Button */}
+        <View className="flex-row justify-between items-start mb-2">
+          <Text className="text-text-primary font-bold text-lg flex-1 mr-4" numberOfLines={2}>
             {plan.title}
           </Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            className="bg-danger/10 px-3 py-1.5 rounded-full"
+          >
+            <Text className="text-danger font-bold text-sm">Exit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Row: Step Counter and Timers */}
+        <View className="flex-row justify-between items-center">
           <Text className="text-text-muted font-medium text-sm">
             Step {currentStepIndex + 1} of {plan.steps.length}
           </Text>
+          
+          <View className="flex-row items-center">
+            {timeLeft > 0 && (
+              <Text
+                className={`text-sm font-bold ${timeLeft < 300 ? "text-danger" : "text-text-muted"} mr-3`}
+              >
+                Total: {formatTime(timeLeft)}
+              </Text>
+            )}
+            {stepTimeLeft > 0 && (
+              <Text className="text-sm font-bold text-primary">
+                ⏱ {formatTime(stepTimeLeft)}
+              </Text>
+            )}
+          </View>
         </View>
-        <View className="flex-row items-center">
-          {timeLeft > 0 && (
-            <Text
-              className={`text-sm font-bold ${timeLeft < 300 ? "text-danger" : "text-text-muted"} mr-4`}
-            >
-              Total: {formatTime(timeLeft)}
-            </Text>
-          )}
-          {stepTimeLeft > 0 && (
-            <Text className="text-sm font-bold text-primary">
-              ⏱ This Step: {formatTime(stepTimeLeft)}
-            </Text>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text className="text-danger font-bold text-base">Exit</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Main Content Area */}
