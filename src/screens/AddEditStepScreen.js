@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import { Video } from "expo-av";
 import { updatePlanSteps } from "../services/firestoreService";
 import { uploadMediaToStorage } from "../services/storageService";
 
@@ -28,6 +29,12 @@ export default function AddEditStepScreen({ route, navigation }) {
   );
   const [localMediaUri, setLocalMediaUri] = useState(step?.mediaUrl || null);
   const [loading, setLoading] = useState(false);
+
+  const isVideo = (url) => {
+    if (!url) return false;
+    const cleanUrl = url.split("?")[0].toLowerCase();
+    return cleanUrl.endsWith(".mp4") || cleanUrl.endsWith(".mov") || cleanUrl.endsWith(".m4v");
+  };
 
   const pickImage = async () => {
     // Request permission
@@ -232,11 +239,22 @@ export default function AddEditStepScreen({ route, navigation }) {
             </Text>
             {localMediaUri ? (
               <View className="relative rounded-xl overflow-hidden mb-2 border border-border shadow-sm">
-                <Image
-                  source={{ uri: localMediaUri }}
-                  className="w-full h-48 bg-surface/50"
-                  resizeMode="cover"
-                />
+                {isVideo(localMediaUri) ? (
+                  <Video
+                    source={{ uri: localMediaUri }}
+                    style={{ width: "100%", height: 192 }} // 192 = h-48 in tailwind
+                    resizeMode="cover"
+                    shouldPlay
+                    isLooping
+                    isMuted
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: localMediaUri }}
+                    className="w-full h-48 bg-surface/50"
+                    resizeMode="cover"
+                  />
+                )}
                 <TouchableOpacity
                   className="absolute top-2 right-2 bg-text-primary/70 p-2 rounded-full"
                   activeOpacity={0.7}

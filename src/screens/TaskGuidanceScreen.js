@@ -19,6 +19,13 @@ import {
 } from "../services/firestoreService";
 import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
+import { Video } from "expo-av";
+
+const isVideo = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  return cleanUrl.endsWith(".mp4") || cleanUrl.endsWith(".mov") || cleanUrl.endsWith(".m4v");
+};
 
 export default function TaskGuidanceScreen({ route, navigation }) {
   const { user } = useUser();
@@ -365,12 +372,21 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       <View className="flex-1 px-6 justify-center">
         {currentStep?.mediaUrl ? (
           <View className="w-full h-64 rounded-3xl mb-8 overflow-hidden bg-surface/50 border border-border shadow-sm">
-            {/* We will assume it is an image for now, later we can add Video support based on file extension */}
-            <Image
-              source={{ uri: currentStep.mediaUrl }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
+            {isVideo(currentStep.mediaUrl) ? (
+              <Video
+                source={{ uri: currentStep.mediaUrl }}
+                style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
+                useNativeControls
+                resizeMode="contain"
+                isLooping
+              />
+            ) : (
+              <Image
+                source={{ uri: currentStep.mediaUrl }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            )}
           </View>
         ) : (
           <View className="w-full h-40 bg-surface rounded-3xl mb-8 items-center justify-center border border-dashed border-border shadow-sm">
