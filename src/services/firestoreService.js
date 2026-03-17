@@ -331,3 +331,51 @@ export const getAssignmentsByCoach = async (coachId) => {
     return [];
   }
 };
+
+// Listen for real-time assignment updates specifically for a coach
+export const subscribeToCoachAssignments = (coachId, callback) => {
+  const q = query(
+    collection(db, "assignments"),
+    where("coachId", "==", coachId)
+  );
+
+  return onSnapshot(q, async (snapshot) => {
+    try {
+      const assignments = [];
+      for (const docSnap of snapshot.docs) {
+        const assignmentData = docSnap.data();
+
+        // Fetch Plan details safely
+        let planDetails = null;
+        if (assignmentData.planId) {
+          const planDoc = await getDoc(doc(db, "plans", assignmentData.planId));
+          if (planDoc.exists()) planDetails = planDoc.data();
+        }
+
+        // Fetch Employee details safely
+        let userDetails = null;
+        if (assignmentData.clientId) {
+          const userDoc = await getDoc(doc(db, "users", assignmentData.clientId));
+          if (userDoc.exists()) userDetails = userDoc.data();
+        }
+
+        assignments.push({
+          id: docSnap.id,
+          ...assignmentData,
+          planDetails,
+          userDetails,
+        });
+      }
+
+      // Sort by assignedAt descending (newest first)
+      assignments.sort(
+        (a, b) => b.assignedAt?.toMillis() - a.assignedAt?.toMillis(),
+      );
+
+      callback(assignments);
+    } catch (error) {
+      console.error("Error processing real-time assignments:", error);
+      callback([]);
+    }
+  });
+};
