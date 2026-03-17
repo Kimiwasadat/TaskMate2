@@ -305,19 +305,23 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               }
               // Send a push notification to the coach
               if (plan?.coachId) {
-                const coachToken = await getUserPushToken(plan.coachId);
-                if (coachToken) {
-                  await sendPushNotification(
-                    coachToken,
-                    "Employee Needs Help",
-                    `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
-                  );
+                try {
+                  const coachToken = await getUserPushToken(plan.coachId);
+                  if (coachToken) {
+                    await sendPushNotification(
+                      coachToken,
+                      "Employee Needs Help",
+                      `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
+                    );
+                  }
+                } catch (pushError) {
+                  console.error("Failed to send push notification to coach, but DB updated:", pushError);
                 }
               }
               setCoachNotified(true);
             } catch (error) {
               console.error(error);
-              Alert.alert("Error", "Failed to notify coach.");
+              Alert.alert("Error", "Failed to update help status.");
             }
           }
         }

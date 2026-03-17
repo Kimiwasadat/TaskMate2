@@ -9,8 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
-import { useFocusEffect } from "@react-navigation/native";
-import { getAssignmentsByCoach } from "../services/firestoreService";
+import { subscribeToCoachAssignments } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 
 export default function CoachProgressScreen({ navigation }) {
@@ -23,25 +22,19 @@ export default function CoachProgressScreen({ navigation }) {
     setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const loadProgress = async () => {
+  useEffect(() => {
     if (!user) return;
+    
     setLoading(true);
-    try {
-      const fetchedAssignments = await getAssignmentsByCoach(user.id);
+    // Subscribe to real-time updates for assignments
+    const unsubscribe = subscribeToCoachAssignments(user.id, (fetchedAssignments) => {
       setAssignments(fetchedAssignments);
-    } catch (error) {
-      console.error("Error loading progress:", error);
-      Alert.alert("Error", "Could not load assignment progress.");
-    } finally {
       setLoading(false);
-    }
-  };
+    });
 
-  useFocusEffect(
-    useCallback(() => {
-      loadProgress();
-    }, [user]),
-  );
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [user]);
 
   const renderAssignmentCard = ({ item }) => {
     const plan = item.planDetails || {};
