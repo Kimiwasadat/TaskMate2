@@ -47,6 +47,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // New AI Helper states
   const [isAIHelperLoading, setIsAIHelperLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState(null);
+  const [coachNotified, setCoachNotified] = useState(false);
 
   // Reminders
   const activeReminderRef = useRef(null);
@@ -313,7 +314,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                   );
                 }
               }
-              Alert.alert("Coach Notified", "Your coach has been alerted and will help you soon.");
+              setCoachNotified(true);
             } catch (error) {
               console.error(error);
               Alert.alert("Error", "Failed to notify coach.");
@@ -341,6 +342,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     setIsSpeaking(false);
     setAiResponse(null);
     setAiMessage(null); // Clear AI Helper message
+    setCoachNotified(false); // Clear coach notification banner
 
     try {
       if (assignmentId) {
@@ -390,6 +392,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     setIsSpeaking(false);
     setAiResponse(null);
     setAiMessage(null); // Clear AI Helper message
+    setCoachNotified(false); // Clear coach notification banner
 
     try {
       if (assignmentId) {
@@ -487,8 +490,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              snapToInterval={330} // Approx width of card + margin
-              decelerationRate="fast"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              className="pt-[140px]" // Increased padding to clear the two-row absolute header
             >
               {(currentStep?.mediaUrls || [currentStep.mediaUrl]).map((url, index) => (
                 <View key={index} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
@@ -600,17 +604,33 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Ask Coach Button */}
-        <View className="flex-row justify-center mb-8">
-          <TouchableOpacity
-            className="flex-1 bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
-            onPress={handleAskCoach}
-          >
-            <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
-            <Text className="text-danger-dark font-bold text-lg">
-              Ask Coach
-            </Text>
-          </TouchableOpacity>
+        {/* Ask Coach Button & Feedback */}
+        <View className="mb-8 items-center w-full">
+          <View className="flex-row justify-center w-full">
+            <TouchableOpacity
+              className="flex-1 bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
+              onPress={handleAskCoach}
+            >
+              <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
+              <Text className="text-danger-dark font-bold text-lg">
+                Ask Coach
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {coachNotified && (
+            <View className="w-full bg-accent/10 border border-accent/30 rounded-xl p-4 mt-4 flex-row items-center">
+              <Text className="text-xl mr-3">✅</Text>
+              <View className="flex-1">
+                <Text className="text-accent-dark font-bold text-base mb-1">
+                  Coach Notified
+                </Text>
+                <Text className="text-accent-dark/80 text-sm font-medium">
+                  Your coach has been alerted and will reach out to help you shortly.
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       </View>
 

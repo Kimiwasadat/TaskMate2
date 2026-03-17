@@ -129,12 +129,21 @@ export default function CoachProgressScreen({ navigation }) {
                 nameColor = "text-text-primary line-through opacity-60";
               } else if (index === currentStepIdx && item.status !== "completed") {
                 // Active Step
-                icon = (
-                  <View className="w-5 h-5 mr-3 items-center justify-center">
-                    <ActivityIndicator size="small" color="#14B8B8" />
-                  </View>
-                );
-                nameColor = "text-primary-dark font-bold";
+                if (needsHelp) {
+                  icon = (
+                    <View className="w-5 h-5 mr-3 items-center justify-center bg-danger rounded-full shadow-sm">
+                      <Text className="text-white text-[10px] font-bold">!</Text>
+                    </View>
+                  );
+                  nameColor = "text-danger-dark font-bold";
+                } else {
+                  icon = (
+                    <View className="w-5 h-5 mr-3 items-center justify-center">
+                      <ActivityIndicator size="small" color="#14B8B8" />
+                    </View>
+                  );
+                  nameColor = "text-primary-dark font-bold";
+                }
               }
 
               return (
