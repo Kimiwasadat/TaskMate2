@@ -291,42 +291,30 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   };
 
   const handleAskCoach = async () => {
-    Alert.alert(
-      "Request Help",
-      "Are you stuck? We can notify your coach to assist you.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Ask Coach", 
-          onPress: async () => {
-            try {
-              if (assignmentId) {
-                await toggleAssignmentHelp(assignmentId, true);
-              }
-              // Send a push notification to the coach
-              if (plan?.coachId) {
-                try {
-                  const coachToken = await getUserPushToken(plan.coachId);
-                  if (coachToken) {
-                    await sendPushNotification(
-                      coachToken,
-                      "Employee Needs Help",
-                      `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
-                    );
-                  }
-                } catch (pushError) {
-                  console.error("Failed to send push notification to coach, but DB updated:", pushError);
-                }
-              }
-              setCoachNotified(true);
-            } catch (error) {
-              console.error(error);
-              Alert.alert("Error", "Failed to update help status.");
-            }
+    try {
+      if (assignmentId) {
+        await toggleAssignmentHelp(assignmentId, true);
+      }
+      // Send a push notification to the coach
+      if (plan?.coachId) {
+        try {
+          const coachToken = await getUserPushToken(plan.coachId);
+          if (coachToken) {
+            await sendPushNotification(
+              coachToken,
+              "Employee Needs Help",
+              `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
+            );
           }
+        } catch (pushError) {
+          console.error("Failed to send push notification to coach, but DB updated:", pushError);
         }
-      ]
-    );
+      }
+      setCoachNotified(true);
+    } catch (error) {
+      console.error("Error setting help status:", error);
+      Alert.alert("Error", "Failed to update help status.");
+    }
   };
 
   // Keep assignment progress synced when step changes
