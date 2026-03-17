@@ -370,23 +370,35 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
       {/* Main Content Area */}
       <View className="flex-1 px-6 justify-center">
-        {currentStep?.mediaUrl ? (
-          <View className="w-full h-64 rounded-3xl mb-8 overflow-hidden bg-surface/50 border border-border shadow-sm">
-            {isVideo(currentStep.mediaUrl) ? (
-              <Video
-                source={{ uri: currentStep.mediaUrl }}
-                style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
-                useNativeControls
-                resizeMode="contain"
-                isLooping
-              />
-            ) : (
-              <Image
-                source={{ uri: currentStep.mediaUrl }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            )}
+        {/* Support both the new mediaUrls array, and fallback to legacy mediaUrl string */}
+        {(currentStep?.mediaUrls?.length > 0 || currentStep?.mediaUrl) ? (
+          <View className="mb-8">
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={330} // Approx width of card + margin
+              decelerationRate="fast"
+            >
+              {(currentStep?.mediaUrls || [currentStep.mediaUrl]).map((url, index) => (
+                <View key={index} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
+                  {isVideo(url) ? (
+                    <Video
+                      source={{ uri: url }}
+                      style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
+                      useNativeControls
+                      resizeMode="contain"
+                      isLooping
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: url }}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         ) : (
           <View className="w-full h-40 bg-surface rounded-3xl mb-8 items-center justify-center border border-dashed border-border shadow-sm">

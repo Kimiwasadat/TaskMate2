@@ -27,7 +27,10 @@ export default function AddEditStepScreen({ route, navigation }) {
   const [durationMinutes, setDurationMinutes] = useState(
     step?.durationMinutes?.toString() || "",
   );
-  const [localMediaUri, setLocalMediaUri] = useState(step?.mediaUrl || null);
+  // Initialize media URIs from the step array, or fallback to the old single mediaUrl if it exists
+  const [localMediaUris, setLocalMediaUris] = useState(
+    step?.mediaUrls ? [...step.mediaUrls] : (step?.mediaUrl ? [step.mediaUrl] : [])
+  );
   const [loading, setLoading] = useState(false);
 
   const isVideo = (url) => {
@@ -51,14 +54,19 @@ export default function AddEditStepScreen({ route, navigation }) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsMultipleSelection: true,
       quality: 0.8,
     });
 
     if (!result.canceled) {
-      setLocalMediaUri(result.assets[0].uri);
+      // Append the newly selected URIs to the existing array
+      const newUris = result.assets.map((asset) => asset.uri);
+      setLocalMediaUris((prev) => [...prev, ...newUris]);
     }
+  };
+
+  const removeMedia = (indexToRemove) => {
+    setLocalMediaUris((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleSaveStep = async () => {
@@ -75,28 +83,34 @@ export default function AddEditStepScreen({ route, navigation }) {
       const stepId = isEditing
         ? step.id
         : Math.random().toString(36).substr(2, 9);
-      let finalMediaUrl = step?.mediaUrl || null;
+      
+      const uploadedMediaUrls = [];
 
-      // If we have a local URI and it's not the same as the existing mediaUrl (meaning they just picked a new file)
-      if (localMediaUri && localMediaUri !== step?.mediaUrl) {
-        try {
-          finalMediaUrl = await uploadMediaToStorage(
-            localMediaUri,
-            planId,
-            stepId,
-          );
-        } catch (uploadError) {
-          Alert.alert(
-            "Upload Failed",
-            "Failed to upload the image to Firebase Storage.",
-          );
-          console.error(uploadError);
-          finalMediaUrl = null; // Do not block saving the step if image fails, or you could return here
+      // Process each URI in the array concurrently
+      const uploadPromises = localMediaUris.map(async (uri, index) => {
+        // If it's an existing Firebase URL, just keep it
+        if (uri.startsWith("http") || uri.startsWith("https")) {
+          return uri;
         }
-      } else if (!localMediaUri) {
-        // If they removed the image
-        finalMediaUrl = null;
-      }
+
+        // Otherwise, it's a new local file that needs uploading
+        try {
+          // Pass down a unique identifier for the specific file
+          const specificStepId = `${stepId}_file${index}`;
+          const downloadUrl = await uploadMediaToStorage(uri, planId, specificStepId);
+          return downloadUrl;
+        } catch (uploadError) {
+          console.error(`Failed to upload file at index ${index}:`, uploadError);
+          // Return null so we can filter it out, rather than crashing the whole save
+          return null;
+        }
+      });
+
+      // Wait for all uploads to finish
+      const results = await Promise.all(uploadPromises);
+      
+      // Filter out any failed uploads (nulls) and store the final array
+      const finalMediaUrls = results.filter(url => url !== null);
 
       const newStep = {
         id: stepId,
@@ -104,7 +118,7 @@ export default function AddEditStepScreen({ route, navigation }) {
         instruction: instruction.trim(),
         durationMinutes: parseInt(durationMinutes) || 0,
         isCompleted: false,
-        mediaUrl: finalMediaUrl,
+        mediaUrls: finalMediaUrls,
       };
 
       const updatedSteps = [...currentSteps];
@@ -235,48 +249,56 @@ export default function AddEditStepScreen({ route, navigation }) {
 
           <View className="mb-8">
             <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
-              Media Attachment
+              Media Attachments
             </Text>
-            {localMediaUri ? (
-              <View className="relative rounded-xl overflow-hidden mb-2 border border-border shadow-sm">
-                {isVideo(localMediaUri) ? (
-                  <Video
-                    source={{ uri: localMediaUri }}
-                    style={{ width: "100%", height: 192 }} // 192 = h-48 in tailwind
-                    resizeMode="cover"
-                    shouldPlay
-                    isLooping
-                    isMuted
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: localMediaUri }}
-                    className="w-full h-48 bg-surface/50"
-                    resizeMode="cover"
-                  />
-                )}
-                <TouchableOpacity
-                  className="absolute top-2 right-2 bg-text-primary/70 p-2 rounded-full"
-                  activeOpacity={0.7}
-                  onPress={() => setLocalMediaUri(null)}
-                >
-                  <Text className="text-white font-bold text-xs">✕ Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={pickImage}
-                activeOpacity={0.7}
-                className="bg-primary/5 p-6 rounded-2xl border border-dashed border-primary/30 items-center justify-center shadow-sm"
+            {localMediaUris.length > 0 && (
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                className="mb-4"
               >
-                <Text className="text-primary-dark font-bold mb-1">
-                  + Attach Photo or Video
-                </Text>
-                <Text className="text-text-muted text-xs">
-                  Tap to open gallery
-                </Text>
-              </TouchableOpacity>
+                {localMediaUris.map((uri, index) => (
+                  <View key={index} className="relative rounded-xl overflow-hidden mr-4 border border-border shadow-sm w-48">
+                    {isVideo(uri) ? (
+                      <Video
+                        source={{ uri }}
+                        style={{ width: "100%", height: 192 }}
+                        resizeMode="cover"
+                        shouldPlay
+                        isLooping
+                        isMuted
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri }}
+                        className="w-full h-48 bg-surface/50"
+                        resizeMode="cover"
+                      />
+                    )}
+                    <TouchableOpacity
+                      className="absolute top-2 right-2 bg-text-primary/70 p-2 rounded-full"
+                      activeOpacity={0.7}
+                      onPress={() => removeMedia(index)}
+                    >
+                      <Text className="text-white font-bold text-xs">✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
             )}
+            
+            <TouchableOpacity
+              onPress={pickImage}
+              activeOpacity={0.7}
+              className="bg-primary/5 p-6 rounded-2xl border border-dashed border-primary/30 items-center justify-center shadow-sm"
+            >
+              <Text className="text-primary-dark font-bold mb-1">
+                + Attach Photos or Videos
+              </Text>
+              <Text className="text-text-muted text-xs">
+                Tap to open gallery
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {isEditing && (
