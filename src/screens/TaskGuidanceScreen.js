@@ -492,7 +492,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 100 }}
-              className="pt-[140px]" // Increased padding to clear the two-row absolute header
+              className="pt-[160px]" // Increased padding to clear the two-row absolute header
             >
               {(currentStep?.mediaUrls || [currentStep.mediaUrl]).map((url, index) => (
                 <View key={index} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
@@ -524,7 +524,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         )}
 
         {/* Text Instruction - Large & Clear */}
-        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-8">
+        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-6 mt-4">
           {currentStep?.instruction}
         </Text>
 
@@ -606,6 +606,26 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
         {/* Ask Coach Button & Feedback */}
         <View className="mb-8 items-center w-full">
+          {/* Main Action Button (Finish / Next Step) moved here to be top priority */}
+          <TouchableOpacity
+            className={`w-full py-4 rounded-xl items-center shadow-md mb-6 ${isLastStep ? "bg-accent" : "bg-primary"}`}
+            onPress={handleNextStep}
+            activeOpacity={0.8}
+          >
+            <Text className="text-white font-extrabold text-xl tracking-wider uppercase">
+              {isLastStep ? "Finish Task" : "Next Step"}
+            </Text>
+          </TouchableOpacity>
+
+          {currentStepIndex > 0 && (
+            <TouchableOpacity 
+              className="w-full mb-6 py-3 bg-surface border border-border rounded-xl items-center"
+              onPress={handlePrevStep}
+            >
+              <Text className="text-text-muted font-bold text-lg">Previous Step</Text>
+            </TouchableOpacity>
+          )}
+
           <View className="flex-row justify-center w-full">
             <TouchableOpacity
               className="flex-1 bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
