@@ -482,17 +482,20 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Main Content Area */}
-      <View className="flex-1 px-6 justify-center">
+      {/* Main Content Area - Now Scrollable */}
+      <ScrollView 
+        className="flex-1 w-full"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 24, paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Support both the new mediaUrls array, and fallback to legacy mediaUrl string */}
         {(currentStep?.mediaUrls?.length > 0 || currentStep?.mediaUrl) ? (
-          <View className="mb-8">
+          <View className="mb-6">
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
-              className="pt-[160px]" // Increased padding to clear the two-row absolute header
+              contentContainerStyle={{ paddingRight: 24 }}
             >
               {(currentStep?.mediaUrls || [currentStep.mediaUrl]).map((url, index) => (
                 <View key={index} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
@@ -516,7 +519,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             </ScrollView>
           </View>
         ) : (
-          <View className="w-full h-40 bg-surface rounded-3xl mb-8 items-center justify-center border border-dashed border-border shadow-sm">
+          <View className="w-full h-40 bg-surface rounded-3xl mb-6 items-center justify-center border border-dashed border-border shadow-sm">
             <Text className="text-text-muted font-medium">
               {currentStep?.title || "Step Instruction"}
             </Text>
@@ -524,13 +527,13 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         )}
 
         {/* Text Instruction - Large & Clear */}
-        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-6 mt-4">
+        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-8">
           {currentStep?.instruction}
         </Text>
 
         {/* AI Response Box (Original) */}
         {aiLoading && (
-          <View className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 items-center shadow-sm">
+          <View className="mb-6 p-6 bg-purple-50 rounded-2xl border border-purple-200 items-center shadow-sm">
             <ActivityIndicator size="small" color="#9333ea" />
             <Text className="text-purple-700 font-bold mt-3 text-lg">
               Thinking of a tip...
@@ -539,7 +542,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         )}
 
         {aiResponse && !aiLoading && (
-          <View className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 shadow-sm">
+          <View className="mb-6 p-6 bg-purple-50 rounded-2xl border border-purple-200 shadow-sm">
             <View className="flex-row items-center mb-2">
               <Text className="text-2xl mr-2">🤖</Text>
               <Text className="font-bold text-purple-900 text-lg">
@@ -554,7 +557,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
         {/* AI Helper Message Box (New) */}
         {aiMessage && !isAIHelperLoading && (
-          <View className="mb-8 p-6 bg-primary/10 rounded-2xl border border-primary/30 shadow-sm">
+          <View className="mb-6 p-6 bg-primary/10 rounded-2xl border border-primary/30 shadow-sm">
             <View className="flex-row items-center mb-2">
               <Text className="text-2xl mr-2">💡</Text>
               <Text className="font-bold text-primary-dark text-lg">
@@ -567,77 +570,80 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Accessibility Toolbar */}
-        <View className="flex-row justify-center mb-8">
-          <TouchableOpacity
-            onPress={speakText}
-            activeOpacity={0.7}
-            className={`flex-row items-center px-6 py-3 rounded-full mr-4 ${isSpeaking && !aiResponse && !aiMessage ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
-          >
-            <Text className="text-3xl mr-3">
-              {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
-            </Text>
-            <Text
-              className={`text-lg font-bold ${isSpeaking && !aiResponse && !aiMessage ? "text-primary-dark" : "text-text-primary"}`}
-            >
-              Read
-            </Text>
-          </TouchableOpacity>
-
-          {/* New AI Help Button */}
-          <TouchableOpacity
-            className="flex-row items-center px-6 py-3 rounded-full border shadow-sm bg-primary/10 border-primary/30"
-            onPress={handleAIHelp}
-            disabled={isAIHelperLoading}
-            activeOpacity={0.7}
-          >
-            {isAIHelperLoading ? (
-              <ActivityIndicator color="#14B8B8" size="small" />
-            ) : (
-              <>
-                <Text className="text-2xl mr-3">✨</Text>
-                <Text className="text-primary-dark text-lg font-bold">
-                  AI Help
-                </Text>
-              </>
+        {/* --- Action Buttons --- */}
+        <View className="w-full mt-2">
+          
+          {/* 1. Primary Action: Finish Task / Next Step */}
+          <View className="flex-row gap-4 mb-6">
+            {currentStepIndex > 0 && (
+              <TouchableOpacity
+                onPress={handlePrevStep}
+                activeOpacity={0.7}
+                className="flex-1 bg-surface border border-border rounded-2xl items-center justify-center h-[60px] shadow-sm"
+              >
+                <Text className="text-text-primary font-bold text-lg">Back</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        </View>
 
-        {/* Ask Coach Button & Feedback */}
-        <View className="mb-8 items-center w-full">
-          {/* Main Action Button (Finish / Next Step) moved here to be top priority */}
-          <TouchableOpacity
-            className={`w-full py-4 rounded-xl items-center shadow-md mb-6 ${isLastStep ? "bg-accent" : "bg-primary"}`}
-            onPress={handleNextStep}
-            activeOpacity={0.8}
-          >
-            <Text className="text-white font-extrabold text-xl tracking-wider uppercase">
-              {isLastStep ? "Finish Task" : "Next Step"}
-            </Text>
-          </TouchableOpacity>
-
-          {currentStepIndex > 0 && (
-            <TouchableOpacity 
-              className="w-full mb-6 py-3 bg-surface border border-border rounded-xl items-center"
-              onPress={handlePrevStep}
-            >
-              <Text className="text-text-muted font-bold text-lg">Previous Step</Text>
-            </TouchableOpacity>
-          )}
-
-          <View className="flex-row justify-center w-full">
             <TouchableOpacity
-              className="flex-1 bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
-              onPress={handleAskCoach}
+              onPress={handleNextStep}
+              activeOpacity={0.8}
+              className={`flex-[2] rounded-2xl items-center justify-center h-[60px] shadow-md ${isLastStep ? "bg-accent active:bg-accent-dark" : "bg-primary active:bg-primary-dark"}`}
             >
-              <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
-              <Text className="text-danger-dark font-bold text-lg">
-                Ask Coach
+              <Text className="text-white font-extrabold text-xl tracking-wider uppercase">
+                {isLastStep ? "Finish Task" : "Next Step"}
               </Text>
             </TouchableOpacity>
           </View>
 
+          {/* 2. Accessibility / AI Help Row */}
+          <View className="flex-row justify-between mb-6 gap-4">
+            <TouchableOpacity
+              onPress={speakText}
+              activeOpacity={0.7}
+              className={`flex-1 flex-row justify-center items-center py-4 rounded-xl shadow-sm ${isSpeaking && !aiResponse && !aiMessage ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
+            >
+              <Text className="text-2xl mr-2">
+                {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
+              </Text>
+              <Text
+                className={`text-lg font-bold ${isSpeaking && !aiResponse && !aiMessage ? "text-primary-dark" : "text-text-primary"}`}
+              >
+                Read
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-1 flex-row justify-center items-center py-4 rounded-xl border shadow-sm bg-primary/10 border-primary/30"
+              onPress={handleAIHelp}
+              disabled={isAIHelperLoading}
+              activeOpacity={0.7}
+            >
+              {isAIHelperLoading ? (
+                <ActivityIndicator color="#14B8B8" size="small" />
+              ) : (
+                <>
+                  <Text className="text-xl mr-2">✨</Text>
+                  <Text className="text-primary-dark text-lg font-bold">
+                    AI Help
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* 3. Ask Coach Button */}
+          <TouchableOpacity
+            className="w-full bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
+            onPress={handleAskCoach}
+          >
+            <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
+            <Text className="text-danger-dark font-bold text-lg">
+              Ask Coach
+            </Text>
+          </TouchableOpacity>
+
+          {/* Coach Notified Banner */}
           {coachNotified && (
             <View className="w-full bg-accent/10 border border-accent/30 rounded-xl p-4 mt-4 flex-row items-center">
               <Text className="text-xl mr-3">✅</Text>
@@ -651,35 +657,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               </View>
             </View>
           )}
-        </View>
-      </View>
 
-      {/* Bottom Controls - BIG TARGETS */}
-      <View className="px-6 pb-8 pt-4 border-t border-border bg-background">
-        <View className="flex-row gap-4">
-          {/* Back Button (Small) */}
-          {currentStepIndex > 0 && (
-            <TouchableOpacity
-              onPress={handlePrevStep}
-              activeOpacity={0.7}
-              className="flex-1 bg-surface border border-border rounded-[14px] items-center justify-center h-[56px]"
-            >
-              <Text className="text-text-primary font-bold text-lg">Back</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Next/Done Button (Huge) */}
-          <TouchableOpacity
-            onPress={handleNextStep}
-            activeOpacity={0.8}
-            className={`flex-[2] rounded-[14px] items-center justify-center h-[56px] ${isLastStep ? "bg-accent active:bg-accent-dark" : "bg-primary active:bg-primary-dark"}`}
-          >
-            <Text className="text-white font-bold text-lg">
-              {isLastStep ? "FINISH TASK" : "NEXT STEP"}
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
