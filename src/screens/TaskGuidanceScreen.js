@@ -15,6 +15,8 @@ import { getTaskHelp } from "../services/aiService";
 import {
   getPlanById,
   updateAssignmentStatus,
+  updateAssignmentProgress, // Added
+  toggleAssignmentHelp, // Added
   getUserPushToken,
 } from "../services/firestoreService";
 import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
@@ -41,6 +43,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // AI UI states
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
+
+  // New AI Helper states
+  const [isAIHelperLoading, setIsAIHelperLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState(null);
 
   // Reminders
   const activeReminderRef = useRef(null);
@@ -239,6 +245,94 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
   };
 
+  const handleAIHelp = async () => {
+    try {
+      setIsAIHelperLoading(true);
+      // Stop any current audio
+      if (isSpeaking) {
+        if (currentSound) {
+          await currentSound.unloadAsync();
+          setCurrentSound(null);
+        }
+        setIsSpeaking(false);
+      }
+      setAiMessage(null); // Clear previous AI message
+      const helpMsg = await getTaskHelp(plan.title, currentStep.instruction); // Using getTaskHelp from aiService
+      setAiMessage(helpMsg);
+
+      // Play the AI tip in a natural voice instantly
+      setIsSpeaking(true);
+      try {
+        const sound = await generateAndPlayAudio(helpMsg);
+        if (sound) {
+          setCurrentSound(sound);
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.didJustFinish) {
+              setIsSpeaking(false);
+              sound.unloadAsync();
+              setCurrentSound(null);
+            }
+          });
+        } else {
+          setIsSpeaking(false);
+        }
+      } catch (error) {
+        setIsSpeaking(false);
+        console.error("Audio generation failed for AI help:", error);
+      }
+
+    } catch (error) {
+      console.error(error);
+      setAiMessage("Sorry, I could not connect to the AI service right now.");
+    } finally {
+      setIsAIHelperLoading(false);
+    }
+  };
+
+  const handleAskCoach = async () => {
+    Alert.alert(
+      "Request Help",
+      "Are you stuck? We can notify your coach to assist you.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Ask Coach", 
+          onPress: async () => {
+            try {
+              if (assignmentId) {
+                await toggleAssignmentHelp(assignmentId, true);
+              }
+              // Send a push notification to the coach
+              if (plan?.coachId) {
+                const coachToken = await getUserPushToken(plan.coachId);
+                if (coachToken) {
+                  await sendPushNotification(
+                    coachToken,
+                    "Employee Needs Help",
+                    `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
+                  );
+                }
+              }
+              Alert.alert("Coach Notified", "Your coach has been alerted and will help you soon.");
+            } catch (error) {
+              console.error(error);
+              Alert.alert("Error", "Failed to notify coach.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Keep assignment progress synced when step changes
+  useEffect(() => {
+    if (assignmentId) {
+      updateAssignmentProgress(assignmentId, currentStepIndex).catch(err => 
+        console.error("Failed to update exact step progress in DB", err)
+      );
+    }
+  }, [currentStepIndex, assignmentId]);
+
   const handleNextStep = async () => {
     if (currentSound) {
       await currentSound.unloadAsync();
@@ -246,8 +340,14 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
     setIsSpeaking(false);
     setAiResponse(null);
+    setAiMessage(null); // Clear AI Helper message
 
     try {
+      if (assignmentId) {
+        // Assume they figured it out if they had asked for help previously
+        await toggleAssignmentHelp(assignmentId, false);
+      }
+
       if (isLastStep) {
         // If it's the last step, mark the entire assignment as completed
         await updateAssignmentStatus(assignmentId, "completed");
@@ -289,6 +389,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
     setIsSpeaking(false);
     setAiResponse(null);
+    setAiMessage(null); // Clear AI Helper message
+
+    try {
+      if (assignmentId) {
+        // Assume they figured it out if they had asked for help previously
+        await toggleAssignmentHelp(assignmentId, false);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
     }
@@ -413,7 +524,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           {currentStep?.instruction}
         </Text>
 
-        {/* AI Response Box */}
+        {/* AI Response Box (Original) */}
         {aiLoading && (
           <View className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-200 items-center shadow-sm">
             <ActivityIndicator size="small" color="#9333ea" />
@@ -437,31 +548,68 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* AI Helper Message Box (New) */}
+        {aiMessage && !isAIHelperLoading && (
+          <View className="mb-8 p-6 bg-primary/10 rounded-2xl border border-primary/30 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <Text className="text-2xl mr-2">💡</Text>
+              <Text className="font-bold text-primary-dark text-lg">
+                AI Tip
+              </Text>
+            </View>
+            <Text className="text-primary-dark text-xl leading-relaxed font-medium">
+              {aiMessage}
+            </Text>
+          </View>
+        )}
+
         {/* Accessibility Toolbar */}
         <View className="flex-row justify-center mb-8">
           <TouchableOpacity
             onPress={speakText}
             activeOpacity={0.7}
-            className={`flex-row items-center px-6 py-3 rounded-full mr-4 ${isSpeaking && !aiResponse ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
+            className={`flex-row items-center px-6 py-3 rounded-full mr-4 ${isSpeaking && !aiResponse && !aiMessage ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
           >
             <Text className="text-3xl mr-3">
-              {isSpeaking && !aiResponse ? "🔊" : "🔈"}
+              {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
             </Text>
             <Text
-              className={`text-lg font-bold ${isSpeaking && !aiResponse ? "text-primary-dark" : "text-text-primary"}`}
+              className={`text-lg font-bold ${isSpeaking && !aiResponse && !aiMessage ? "text-primary-dark" : "text-text-primary"}`}
             >
               Read
             </Text>
           </TouchableOpacity>
 
+          {/* New AI Help Button */}
           <TouchableOpacity
-            onPress={handleAskAI}
-            disabled={aiLoading}
+            className="flex-row items-center px-6 py-3 rounded-full border shadow-sm bg-primary/10 border-primary/30"
+            onPress={handleAIHelp}
+            disabled={isAIHelperLoading}
             activeOpacity={0.7}
-            className={`flex-row items-center px-6 py-3 rounded-full border shadow-sm ${isSpeaking && aiResponse ? "bg-purple-200 border-purple-400" : "bg-purple-100 border-purple-200"}`}
           >
-            <Text className="text-2xl mr-3">✨</Text>
-            <Text className="text-purple-800 text-lg font-bold">Help</Text>
+            {isAIHelperLoading ? (
+              <ActivityIndicator color="#14B8B8" size="small" />
+            ) : (
+              <>
+                <Text className="text-2xl mr-3">✨</Text>
+                <Text className="text-primary-dark text-lg font-bold">
+                  AI Help
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Ask Coach Button */}
+        <View className="flex-row justify-center mb-8">
+          <TouchableOpacity
+            className="flex-1 bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
+            onPress={handleAskCoach}
+          >
+            <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
+            <Text className="text-danger-dark font-bold text-lg">
+              Ask Coach
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

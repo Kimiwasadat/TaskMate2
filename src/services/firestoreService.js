@@ -214,6 +214,8 @@ export const createAssignment = async (clientId, planId, coachId) => {
       planId,
       coachId,
       status: "not_started",
+      currentStepIndex: 0,
+      needsHelp: false,
       assignedAt: serverTimestamp(),
     });
     return docRef.id;
@@ -257,6 +259,28 @@ export const updateAssignmentStatus = async (assignmentId, status) => {
     await updateDoc(assignmentRef, { status });
   } catch (error) {
     console.error("Error updating assignment:", error);
+    throw error;
+  }
+};
+
+// Update the exact step the employee is currently working on
+export const updateAssignmentProgress = async (assignmentId, currentStepIndex) => {
+  try {
+    const assignmentRef = doc(db, "assignments", assignmentId);
+    await updateDoc(assignmentRef, { currentStepIndex });
+  } catch (error) {
+    console.error("Error updating assignment progress:", error);
+    throw error;
+  }
+};
+
+// Toggle the human help request flag for a specific assignment
+export const toggleAssignmentHelp = async (assignmentId, needsHelp) => {
+  try {
+    const assignmentRef = doc(db, "assignments", assignmentId);
+    await updateDoc(assignmentRef, { needsHelp });
+  } catch (error) {
+    console.error("Error toggling assignment help:", error);
     throw error;
   }
 };

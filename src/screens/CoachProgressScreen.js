@@ -17,6 +17,11 @@ export default function CoachProgressScreen({ navigation }) {
   const { user } = useUser();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedCards, setExpandedCards] = useState({});
+
+  const toggleCardExpansion = (id) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const loadProgress = async () => {
     if (!user) return;
@@ -41,6 +46,9 @@ export default function CoachProgressScreen({ navigation }) {
   const renderAssignmentCard = ({ item }) => {
     const plan = item.planDetails || {};
     const employee = item.userDetails || {};
+    const isExpanded = expandedCards[item.id] || false;
+    const currentStepIdx = item.currentStepIndex || 0;
+    const needsHelp = item.needsHelp || false;
 
     let statusColor = "bg-surface border border-border";
     let statusTextColor = "text-text-muted";
@@ -57,7 +65,17 @@ export default function CoachProgressScreen({ navigation }) {
     }
 
     return (
-      <View className="bg-surface p-5 rounded-2xl mb-4 shadow-sm border border-border">
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={() => toggleCardExpansion(item.id)}
+        className={`bg-surface p-5 rounded-2xl mb-4 shadow-sm border ${needsHelp ? "border-danger border-2" : "border-border"}`}
+      >
+        {needsHelp && (
+          <View className="bg-danger absolute -top-3 -right-2 px-3 py-1 rounded-full shadow-md z-10 flex-row items-center justify-center">
+            <Text className="text-white text-xs font-bold mr-1">⚠️</Text>
+            <Text className="text-white text-xs font-bold uppercase tracking-wider">Needs Help</Text>
+          </View>
+        )}
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1 mr-4">
             <Text className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">
@@ -93,7 +111,46 @@ export default function CoachProgressScreen({ navigation }) {
             </Text>
           </View>
         </View>
-      </View>
+
+        {isExpanded && plan.steps && plan.steps.length > 0 && (
+          <View className="mt-4 pt-4 border-t border-border border-dashed">
+            <Text className="text-text-primary font-bold mb-3">Plan Progress</Text>
+            {plan.steps.map((step, index) => {
+              let icon = <View className="w-5 h-5 rounded-full border-2 border-border mr-3" />; // Future step
+              let nameColor = "text-text-muted";
+              
+              if (item.status === "completed" || index < currentStepIdx) {
+                // Completed Step
+                icon = (
+                  <View className="w-5 h-5 rounded-full bg-accent items-center justify-center mr-3">
+                    <Text className="text-white text-[10px] font-bold">✓</Text>
+                  </View>
+                );
+                nameColor = "text-text-primary line-through opacity-60";
+              } else if (index === currentStepIdx && item.status !== "completed") {
+                // Active Step
+                icon = (
+                  <View className="w-5 h-5 mr-3 items-center justify-center">
+                    <ActivityIndicator size="small" color="#14B8B8" />
+                  </View>
+                );
+                nameColor = "text-primary-dark font-bold";
+              }
+
+              return (
+                <View key={index} className="flex-row items-center mb-3 pr-4">
+                  {icon}
+                  <View className="flex-1">
+                    <Text className={`${nameColor} text-sm`} numberOfLines={2}>
+                      {index + 1}. {step.title}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
