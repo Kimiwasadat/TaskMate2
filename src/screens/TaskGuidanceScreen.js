@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,9 @@ import {
 import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
 import { Video } from "expo-av";
+import { NetworkContext } from "../context/NetworkContext";
+import NetworkStatusBanner from "../components/NetworkStatusBanner";
+import { queueOfflineAction, updateOfflineAssignment, getOfflineAssignments } from "../services/offlineStorageService";
 
 const isVideo = (url) => {
   if (!url) return false;
@@ -44,7 +47,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
 
-  // New AI Helper states
+  // AI Helper states
   const [isAIHelperLoading, setIsAIHelperLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState(null);
   const [coachNotified, setCoachNotified] = useState(false);
@@ -52,14 +55,27 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // Reminders
   const activeReminderRef = useRef(null);
 
+  const { isOffline } = useContext(NetworkContext);
+
   useEffect(() => {
     const fetchPlanDetails = async () => {
       try {
-        const data = await getPlanById(planId);
-        if (data) {
-          setPlan(data);
+        if (isOffline) {
+          const cachedTasks = await getOfflineAssignments();
+          const cachedTask = cachedTasks.find(t => t.id === assignmentId);
+          if (cachedTask && cachedTask.planDetails) {
+            setPlan(cachedTask.planDetails);
+            if (cachedTask.currentStepIndex) {
+              setCurrentStepIndex(cachedTask.currentStepIndex);
+            }
+          }
         } else {
-          console.log("Plan not found");
+          const data = await getPlanById(planId);
+          if (data) {
+            setPlan(data);
+          } else {
+            console.log("Plan not found");
+          }
         }
       } catch (error) {
         console.error("Error fetching plan:", error);
@@ -69,7 +85,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     };
 
     fetchPlanDetails();
-  }, [planId]);
+  }, [planId, assignmentId, isOffline]);
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -293,10 +309,18 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const handleAskCoach = async () => {
     try {
       if (assignmentId) {
-        await toggleAssignmentHelp(assignmentId, true);
+        if (isOffline) {
+          queueOfflineAction({
+            type: 'TOGGLE_HELP',
+            payload: { assignmentId, needsHelp: true }
+          });
+          updateOfflineAssignment(assignmentId, { needsHelp: true });
+        } else {
+          await toggleAssignmentHelp(assignmentId, true);
+        }
       }
       // Send a push notification to the coach
-      if (plan?.coachId) {
+      if (plan?.coachId && !isOffline) {
         try {
           const coachToken = await getUserPushToken(plan.coachId);
           if (coachToken) {
@@ -320,11 +344,19 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // Keep assignment progress synced when step changes
   useEffect(() => {
     if (assignmentId) {
-      updateAssignmentProgress(assignmentId, currentStepIndex).catch(err => 
-        console.error("Failed to update exact step progress in DB", err)
-      );
+      if (isOffline) {
+        queueOfflineAction({
+          type: 'UPDATE_PROGRESS',
+          payload: { assignmentId, currentStepIndex }
+        });
+        updateOfflineAssignment(assignmentId, { currentStepIndex });
+      } else {
+        updateAssignmentProgress(assignmentId, currentStepIndex).catch(err => 
+          console.error("Failed to update exact step progress in DB", err)
+        );
+      }
     }
-  }, [currentStepIndex, assignmentId]);
+  }, [currentStepIndex, assignmentId, isOffline]);
 
   const handleNextStep = async () => {
     if (currentSound) {
@@ -339,16 +371,26 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     try {
       if (assignmentId) {
         // Assume they figured it out if they had asked for help previously
-        await toggleAssignmentHelp(assignmentId, false);
+        if (isOffline) {
+          queueOfflineAction({ type: 'TOGGLE_HELP', payload: { assignmentId, needsHelp: false } });
+          updateOfflineAssignment(assignmentId, { needsHelp: false });
+        } else {
+          await toggleAssignmentHelp(assignmentId, false);
+        }
       }
 
       if (isLastStep) {
         // If it's the last step, mark the entire assignment as completed
-        await updateAssignmentStatus(assignmentId, "completed");
+        if (isOffline) {
+          queueOfflineAction({ type: 'UPDATE_STATUS', payload: { assignmentId, status: "completed" } });
+          updateOfflineAssignment(assignmentId, { status: "completed" });
+        } else {
+          await updateAssignmentStatus(assignmentId, "completed");
+        }
 
         // Notify the coach
         try {
-          if (plan.coachId) {
+          if (plan?.coachId && !isOffline) {
             const coachToken = await getUserPushToken(plan.coachId);
             if (coachToken) {
               const employeeName = user?.firstName || "Your employee";
@@ -367,7 +409,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       } else {
         // If we are just starting the first step, mark assignment as in_progress
         if (currentStepIndex === 0) {
-          await updateAssignmentStatus(assignmentId, "in_progress");
+          if (isOffline) {
+            queueOfflineAction({ type: 'UPDATE_STATUS', payload: { assignmentId, status: "in_progress" } });
+            updateOfflineAssignment(assignmentId, { status: "in_progress" });
+          } else {
+            await updateAssignmentStatus(assignmentId, "in_progress");
+          }
         }
         setCurrentStepIndex((prev) => prev + 1);
       }
@@ -389,7 +436,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     try {
       if (assignmentId) {
         // Assume they figured it out if they had asked for help previously
-        await toggleAssignmentHelp(assignmentId, false);
+        if (isOffline) {
+          queueOfflineAction({ type: 'TOGGLE_HELP', payload: { assignmentId, needsHelp: false } });
+          updateOfflineAssignment(assignmentId, { needsHelp: false });
+        } else {
+          await toggleAssignmentHelp(assignmentId, false);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -435,6 +487,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   return (
     <SafeAreaView className="flex-1 bg-background flex-col">
+      <NetworkStatusBanner />
       {/* Header / Progress */}
       <View className="px-6 py-4 bg-surface border-b border-border">
         {/* Top Row: Title and Exit Button */}
@@ -445,6 +498,8 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Exit Task"
             className="bg-danger/10 px-3 py-1.5 rounded-full"
           >
             <Text className="text-danger font-bold text-sm">Exit</Text>
@@ -452,8 +507,11 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         </View>
 
         {/* Bottom Row: Step Counter and Timers */}
-        <View className="flex-row justify-between items-center">
-          <Text className="text-text-muted font-medium text-sm">
+        <View className="flex-row justify-between items-center mb-3">
+          <Text 
+            className="text-text-muted font-bold text-sm uppercase" 
+            accessibilityLabel={`Step ${currentStepIndex + 1} of ${plan.steps.length}`}
+          >
             Step {currentStepIndex + 1} of {plan.steps.length}
           </Text>
           
@@ -471,6 +529,18 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               </Text>
             )}
           </View>
+        </View>
+
+        {/* Accessibility Progress Bar */}
+        <View 
+          className="w-full h-2.5 bg-border rounded-full overflow-hidden" 
+          accessibilityRole="progressbar" 
+          accessibilityValue={{ min: 0, max: plan.steps.length, now: currentStepIndex + 1 }}
+        >
+          <View 
+            className="h-full bg-green-500 rounded-full" 
+            style={{ width: `${((currentStepIndex + 1) / plan.steps.length) * 100}%` }}
+          />
         </View>
       </View>
 
@@ -563,15 +633,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         )}
 
         {/* --- Action Buttons --- */}
-        <View className="w-full mt-2">
+        <View className="w-full mt-4">
           
           {/* 1. Primary Action: Finish Task / Next Step */}
-          <View className="flex-row gap-4 mb-6">
+          <View className="flex-row gap-4 mb-8">
             {currentStepIndex > 0 && (
               <TouchableOpacity
                 onPress={handlePrevStep}
                 activeOpacity={0.7}
-                className="flex-1 bg-surface border border-border rounded-2xl items-center justify-center h-[60px] shadow-sm"
+                accessibilityRole="button"
+                accessibilityLabel="Go back to previous step"
+                className="flex-1 bg-surface border border-border rounded-2xl items-center justify-center h-[64px] shadow-sm"
               >
                 <Text className="text-text-primary font-bold text-lg">Back</Text>
               </TouchableOpacity>
@@ -580,76 +652,89 @@ export default function TaskGuidanceScreen({ route, navigation }) {
             <TouchableOpacity
               onPress={handleNextStep}
               activeOpacity={0.8}
-              className={`flex-[2] rounded-2xl items-center justify-center h-[60px] shadow-md ${isLastStep ? "bg-accent active:bg-accent-dark" : "bg-primary active:bg-primary-dark"}`}
+              accessibilityRole="button"
+              accessibilityLabel={isLastStep ? "Finish Task" : "Go to next step"}
+              className="flex-[2] rounded-2xl items-center justify-center h-[64px] shadow-md bg-green-600 active:bg-green-700 flex-row"
             >
-              <Text className="text-white font-extrabold text-xl tracking-wider uppercase">
+              <Text className="text-white font-extrabold text-xl tracking-wider uppercase mr-2">
                 {isLastStep ? "Finish Task" : "Next Step"}
               </Text>
+              <Text className="text-white text-xl">{isLastStep ? "✅" : "➡️"}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 2. Accessibility / AI Help Row */}
-          <View className="flex-row justify-between mb-6 gap-4">
-            <TouchableOpacity
-              onPress={speakText}
-              activeOpacity={0.7}
-              className={`flex-1 flex-row justify-center items-center py-4 rounded-xl shadow-sm ${isSpeaking && !aiResponse && !aiMessage ? "bg-primary/20 border border-primary/40" : "bg-surface border border-border"}`}
+          {/* 2. Help Section (Secondary Actions) */}
+          <View className="w-full pt-6 border-t border-border">
+            <Text 
+              className="text-text-muted font-bold text-sm uppercase tracking-wider mb-4 px-2" 
+              accessibilityRole="header"
             >
-              <Text className="text-2xl mr-2">
-                {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
-              </Text>
-              <Text
-                className={`text-lg font-bold ${isSpeaking && !aiResponse && !aiMessage ? "text-primary-dark" : "text-text-primary"}`}
-              >
-                Read
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-1 flex-row justify-center items-center py-4 rounded-xl border shadow-sm bg-primary/10 border-primary/30"
-              onPress={handleAIHelp}
-              disabled={isAIHelperLoading}
-              activeOpacity={0.7}
-            >
-              {isAIHelperLoading ? (
-                <ActivityIndicator color="#14B8B8" size="small" />
-              ) : (
-                <>
-                  <Text className="text-xl mr-2">✨</Text>
-                  <Text className="text-primary-dark text-lg font-bold">
-                    AI Help
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* 3. Ask Coach Button */}
-          <TouchableOpacity
-            className="w-full bg-danger/10 py-4 rounded-xl items-center border border-danger/30 shadow-sm flex-row justify-center"
-            onPress={handleAskCoach}
-          >
-            <Text className="text-xl mr-2">🙋🏽‍♂️</Text>
-            <Text className="text-danger-dark font-bold text-lg">
-              Ask Coach
+              Need Assistance?
             </Text>
-          </TouchableOpacity>
+            
+            <View className="flex-col gap-3">
+              <TouchableOpacity
+                onPress={speakText}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Listen to instruction"
+                className="w-full flex-row items-center py-4 px-5 rounded-xl bg-surface border border-border shadow-sm"
+              >
+                <Text className="text-2xl mr-4">
+                  {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
+                </Text>
+                <Text className="text-lg font-bold text-text-primary flex-1">
+                  Listen
+                </Text>
+              </TouchableOpacity>
 
-          {/* Coach Notified Banner */}
-          {coachNotified && (
-            <View className="w-full bg-accent/10 border border-accent/30 rounded-xl p-4 mt-4 flex-row items-center">
-              <Text className="text-xl mr-3">✅</Text>
-              <View className="flex-1">
-                <Text className="text-accent-dark font-bold text-base mb-1">
-                  Coach Notified
+              <TouchableOpacity
+                className="w-full flex-row items-center py-4 px-5 rounded-xl border border-border bg-surface shadow-sm"
+                onPress={handleAIHelp}
+                disabled={isAIHelperLoading}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Get help from AI"
+              >
+                {isAIHelperLoading ? (
+                  <ActivityIndicator color="#666" size="small" style={{ marginRight: 16 }} />
+                ) : (
+                  <Text className="text-2xl mr-4">✨</Text>
+                )}
+                <Text className="text-text-primary text-lg font-bold flex-1">
+                  Get Help
                 </Text>
-                <Text className="text-accent-dark/80 text-sm font-medium">
-                  Your coach has been alerted and will reach out to help you shortly.
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="w-full flex-row items-center py-4 px-5 rounded-xl border border-border bg-surface shadow-sm"
+                onPress={handleAskCoach}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Contact your coach for help"
+              >
+                <Text className="text-2xl mr-4">🙋🏽‍♂️</Text>
+                <Text className="text-text-primary font-bold text-lg flex-1">
+                  Contact Coach
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
-          )}
 
+            {/* Coach Notified Banner */}
+            {coachNotified && (
+              <View className="w-full bg-green-50 border border-green-200 rounded-xl p-4 mt-6 flex-row items-center" accessibilityLiveRegion="polite">
+                <Text className="text-xl mr-3">✅</Text>
+                <View className="flex-1">
+                  <Text className="text-green-800 font-bold text-base mb-1">
+                    Coach Notified
+                  </Text>
+                  <Text className="text-green-700 text-sm font-medium">
+                    Your coach has been alerted and will reach out to help you shortly.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

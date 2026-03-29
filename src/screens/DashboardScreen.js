@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -11,29 +11,47 @@ import { useUser, useAuth } from "@clerk/clerk-expo";
 import { getAssignmentsForClient } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 import DashboardHeader from "../components/DashboardHeader";
+import { NetworkContext } from "../context/NetworkContext";
+import NetworkStatusBanner from "../components/NetworkStatusBanner";
+import { saveOfflineAssignments, getOfflineAssignments } from "../services/offlineStorageService";
+
 export default function DashboardScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isOffline } = useContext(NetworkContext);
 
   useEffect(() => {
     const fetchTasks = async () => {
       if (user) {
         console.log("---- FETCHING ASSIGNMENTS FOR USER ID:", user.id);
         try {
-          const fetchedTasks = await getAssignmentsForClient(user.id);
-          console.log("---- FOUND DB ASSIGNMENTS:", fetchedTasks);
-          setTasks(fetchedTasks || []);
+          if (isOffline) {
+            console.log("Offline: Loading assignments from local storage");
+            const cachedTasks = await getOfflineAssignments();
+            setTasks(cachedTasks || []);
+          } else {
+            console.log("Online: Fetching from DB");
+            const fetchedTasks = await getAssignmentsForClient(user.id);
+            setTasks(fetchedTasks || []);
+            await saveOfflineAssignments(fetchedTasks || []);
+          }
         } catch (error) {
           console.error("Error fetching tasks:", error);
-          setTasks([]);
+          if (!isOffline) {
+            // Fallback
+            const cachedTasks = await getOfflineAssignments();
+            setTasks(cachedTasks || []);
+          } else {
+            setTasks([]);
+          }
         }
       }
       setLoading(false);
     };
     fetchTasks();
-  }, [user]);
+  }, [user, isOffline]);
 
   // Timer is temporarily removed pending realtime implementation
 
@@ -133,6 +151,7 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
         }
       />
+      <NetworkStatusBanner />
       <View className="px-6 flex-1">
         <Text className="text-3xl font-black text-text-primary mb-2 mt-2">
           Hi, {user?.firstName || "Messenger"}!
