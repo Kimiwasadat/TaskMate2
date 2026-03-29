@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { NetworkProvider } from "./src/context/NetworkContext";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
 import AppNavigator from "./src/navigation/AppNavigator";
@@ -49,15 +50,17 @@ export default function App() {
       publishableKey={CLERK_PUBLISHABLE_KEY}
       tokenCache={tokenCache}
     >
-      <IntroGate>
-        <StatusBar style="auto" />
-        <SignedIn>
-          <AppNavigator />
-        </SignedIn>
-        <SignedOut>
-          <AuthStack />
-        </SignedOut>
-      </IntroGate>
+      <NetworkProvider>
+        <IntroGate>
+          <StatusBar style="auto" />
+          <SignedIn>
+            <AppNavigator />
+          </SignedIn>
+          <SignedOut>
+            <AuthStack />
+          </SignedOut>
+        </IntroGate>
+      </NetworkProvider>
     </ClerkProvider>
   );
 }
