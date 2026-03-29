@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
@@ -56,6 +57,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const activeReminderRef = useRef(null);
 
   const { isOffline } = useContext(NetworkContext);
+  const { height } = useWindowDimensions();
 
   useEffect(() => {
     const fetchPlanDetails = async () => {
@@ -548,10 +550,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       <ScrollView 
         className="flex-1 w-full"
         contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 24, paddingBottom: 60 }}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
       >
-        {/* Support both the new mediaUrls array, and fallback to legacy mediaUrl string */}
-        {(currentStep?.mediaUrls?.length > 0 || currentStep?.mediaUrl) ? (
+        {/* Main Content Wrapper - Forces Help Section Below Fold */}
+        <View style={{ minHeight: height * 0.60 }} className="justify-center">
+          {/* Support both the new mediaUrls array, and fallback to legacy mediaUrl string */}
+          {(currentStep?.mediaUrls?.length > 0 || currentStep?.mediaUrl) ? (
           <View className="mb-6">
             <ScrollView 
               horizontal 
@@ -654,7 +658,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel={isLastStep ? "Finish Task" : "Go to next step"}
-              className="flex-[2] rounded-2xl items-center justify-center h-[64px] shadow-md bg-green-600 active:bg-green-700 flex-row"
+              className="flex-[3] rounded-2xl items-center justify-center h-[64px] shadow-md bg-green-600 active:bg-green-700 flex-row"
             >
               <Text className="text-white font-extrabold text-xl tracking-wider uppercase mr-2">
                 {isLastStep ? "Finish Task" : "Next Step"}
@@ -662,7 +666,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               <Text className="text-white text-xl">{isLastStep ? "✅" : "➡️"}</Text>
             </TouchableOpacity>
           </View>
+        </View>
+        </View>
 
+        <View className="w-full mt-4">
           {/* 2. Help Section (Secondary Actions) */}
           <View className="w-full pt-6 border-t border-border">
             <Text 
