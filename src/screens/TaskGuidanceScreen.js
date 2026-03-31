@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import { useUser } from "@clerk/clerk-expo";
 import { generateAndPlayAudio } from "../services/ttsService";
-import { getTaskHelp } from "../services/aiService";
+import { getTaskHelp, getTaskHelpWithAudio } from "../services/aiService";
 import {
   getPlanById,
   updateAssignmentStatus,
@@ -22,7 +22,8 @@ import {
 } from "../services/firestoreService";
 import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
-import { Video } from "expo-av";
+import { Video, Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
 import { NetworkContext } from "../context/NetworkContext";
 import NetworkStatusBanner from "../components/NetworkStatusBanner";
 import { queueOfflineAction, updateOfflineAssignment, getOfflineAssignments } from "../services/offlineStorageService";
@@ -52,6 +53,11 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const [isAIHelperLoading, setIsAIHelperLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState(null);
   const [coachNotified, setCoachNotified] = useState(false);
+
+  // Audio Recording States
+  const [isRecording, setIsRecording] = useState(false);
+  const [recording, setRecording] = useState(null);
+  const recordingTimeoutRef = useRef(null);
 
   // Reminders
   const activeReminderRef = useRef(null);
@@ -115,6 +121,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
     return () => clearInterval(timerId);
   }, [timeLeft, stepTimeLeft]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+      }
+      if (recording) {
+        recording.stopAndUnloadAsync().catch(() => {});
+      }
+    };
+  }, [recording]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -224,28 +241,76 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
   };
 
-  const handleAskAI = async () => {
-    // 1. Stop any current audio
-    if (isSpeaking) {
-      if (currentSound) {
-        await currentSound.unloadAsync();
-        setCurrentSound(null);
+  const startRecording = async () => {
+    try {
+      // 1. Ask permissions
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        console.warn("Microphone permission not granted");
+        return;
       }
-      setIsSpeaking(false);
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      // 2. Start recording
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+      setAiMessage(null); // clear old message
+      setAiResponse(null); // clear old tip
+
+      // 3. Set a 15-second timeout to stop recording automatically
+      recordingTimeoutRef.current = setTimeout(() => {
+        stopRecording(recording);
+      }, 15000);
+    } catch (err) {
+      console.error("Failed to start recording", err);
+    }
+  };
+
+  const stopRecording = async (currentRecording = recording) => {
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
     }
 
-    // 2. Load the AI tip
-    setAiLoading(true);
-    setAiResponse(null);
+    if (!currentRecording) return;
+    setIsRecording(false);
+    setIsAIHelperLoading(true);
 
-    const helpText = await getTaskHelp(plan.title, currentStep?.instruction);
-    setAiResponse(helpText);
-    setAiLoading(false);
-
-    // 3. Play the AI tip in a natural voice instantly
-    setIsSpeaking(true);
     try {
-      const sound = await generateAndPlayAudio(helpText);
+      await currentRecording.stopAndUnloadAsync();
+      const uri = currentRecording.getURI();
+      setRecording(null);
+
+      // Read audio file as base64
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64",
+      });
+
+      // Gemini needs standard audio format headers
+      const mimeType = "audio/m4a"; 
+
+      // Stop any current visual/audio reading
+      if (isSpeaking && currentSound) {
+         await currentSound.unloadAsync();
+         setCurrentSound(null);
+         setIsSpeaking(false);
+      }
+
+      // Send to Gemini 2.5 Flash via AI Service
+      const helpMsg = await getTaskHelpWithAudio(plan.title, currentStep.instruction, base64Audio, mimeType);
+      
+      setAiMessage(helpMsg);
+
+      // Play the AI tip in a natural voice instantly
+      setIsSpeaking(true);
+      const sound = await generateAndPlayAudio(helpMsg);
       if (sound) {
         setCurrentSound(sound);
         sound.setOnPlaybackStatusUpdate((status) => {
@@ -258,53 +323,20 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       } else {
         setIsSpeaking(false);
       }
-    } catch (error) {
-      setIsSpeaking(false);
-      console.error("Audio generation failed for AI help:", error);
-    }
-  };
 
-  const handleAIHelp = async () => {
-    try {
-      setIsAIHelperLoading(true);
-      // Stop any current audio
-      if (isSpeaking) {
-        if (currentSound) {
-          await currentSound.unloadAsync();
-          setCurrentSound(null);
-        }
-        setIsSpeaking(false);
-      }
-      setAiMessage(null); // Clear previous AI message
-      const helpMsg = await getTaskHelp(plan.title, currentStep.instruction); // Using getTaskHelp from aiService
-      setAiMessage(helpMsg);
-
-      // Play the AI tip in a natural voice instantly
-      setIsSpeaking(true);
-      try {
-        const sound = await generateAndPlayAudio(helpMsg);
-        if (sound) {
-          setCurrentSound(sound);
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.didJustFinish) {
-              setIsSpeaking(false);
-              sound.unloadAsync();
-              setCurrentSound(null);
-            }
-          });
-        } else {
-          setIsSpeaking(false);
-        }
-      } catch (error) {
-        setIsSpeaking(false);
-        console.error("Audio generation failed for AI help:", error);
-      }
-
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error("Failed to process recording", err);
       setAiMessage("Sorry, I could not connect to the AI service right now.");
     } finally {
       setIsAIHelperLoading(false);
+    }
+  };
+
+  const handleAIHelp = () => {
+    if (isRecording) {
+      stopRecording(recording);
+    } else {
+      startRecording();
     }
   };
 
@@ -696,20 +728,24 @@ export default function TaskGuidanceScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="w-full flex-row items-center py-4 px-5 rounded-xl border border-border bg-surface shadow-sm"
+                className={`w-full flex-row items-center py-4 px-5 rounded-xl border shadow-sm ${
+                  isRecording 
+                    ? "bg-red-50 border-red-300 shadow-md" 
+                    : "border-border bg-surface"
+                }`}
                 onPress={handleAIHelp}
                 disabled={isAIHelperLoading}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel="Get help from AI"
+                accessibilityLabel="Get help from AI using voice"
               >
                 {isAIHelperLoading ? (
                   <ActivityIndicator color="#666" size="small" style={{ marginRight: 16 }} />
                 ) : (
-                  <Text className="text-2xl mr-4">✨</Text>
+                  <Text className="text-2xl mr-4">{isRecording ? "🔴" : "🎙️"}</Text>
                 )}
-                <Text className="text-text-primary text-lg font-bold flex-1">
-                  Get Help
+                <Text className={`text-lg font-bold flex-1 ${isRecording ? "text-red-600" : "text-text-primary"}`}>
+                  {isRecording ? "Listening... Tap to stop" : "AI Help"}
                 </Text>
               </TouchableOpacity>
 
