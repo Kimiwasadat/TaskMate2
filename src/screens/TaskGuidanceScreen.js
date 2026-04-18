@@ -243,6 +243,15 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   const startRecording = async () => {
     try {
+      // 0. Stop any currently playing audio so iOS doesn't throw 561017449
+      if (isSpeaking || currentSound) {
+        if (currentSound) {
+          await currentSound.unloadAsync();
+          setCurrentSound(null);
+        }
+        setIsSpeaking(false);
+      }
+
       // 1. Ask permissions
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== "granted") {
