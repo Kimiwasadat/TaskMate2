@@ -379,3 +379,35 @@ export const subscribeToCoachAssignments = (coachId, callback) => {
     }
   });
 };
+
+// --- SOCIAL CUES OPERATIONS ---
+export const saveSocialCue = async (coachId, cueData) => {
+  try {
+    const cueRef = doc(collection(db, "socialCues"));
+    const newCue = {
+      id: cueRef.id,
+      coachId,
+      title: cueData.title,
+      type: cueData.type, // 'exact_script' or 'ai_prompt'
+      content: cueData.content,
+      createdAt: serverTimestamp(),
+    };
+    await setDoc(cueRef, newCue);
+    return newCue;
+  } catch (error) {
+    console.error("Error saving social cue:", error);
+    throw error;
+  }
+};
+
+export const getCoachSocialCues = async (coachId) => {
+  try {
+    const q = query(collection(db, "socialCues"), where("coachId", "==", coachId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => doc.data());
+  } catch (error) {
+    console.error("Error fetching social cues:", error);
+    return [];
+  }
+};
+

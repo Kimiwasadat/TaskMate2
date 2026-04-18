@@ -10,14 +10,17 @@ import {
   Platform,
   ScrollView,
   Image,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useUser } from "@clerk/clerk-expo";
 import * as ImagePicker from "expo-image-picker";
 import { Video } from "expo-av";
-import { updatePlanSteps } from "../services/firestoreService";
+import { updatePlanSteps, getCoachSocialCues, saveSocialCue } from "../services/firestoreService";
 import { uploadMediaToStorage } from "../services/storageService";
 
 export default function AddEditStepScreen({ route, navigation }) {
+  const { user } = useUser();
   // Determine if we are adding a new step, or editing an existing one
   const { planId, step, stepIndex, currentSteps } = route.params;
   const isEditing = step !== undefined;
@@ -32,6 +35,21 @@ export default function AddEditStepScreen({ route, navigation }) {
     step?.mediaUrls ? [...step.mediaUrls] : (step?.mediaUrl ? [step.mediaUrl] : [])
   );
   const [loading, setLoading] = useState(false);
+
+  // Social Cues State
+  const [socialCues, setSocialCues] = useState([]);
+  const [selectedCueId, setSelectedCueId] = useState(step?.socialCue?.id || "");
+  const [showModal, setShowModal] = useState(false);
+  const [savingCue, setSavingCue] = useState(false);
+  const [newCueTitle, setNewCueTitle] = useState("");
+  const [newCueType, setNewCueType] = useState("exact_script");
+  const [newCueContent, setNewCueContent] = useState("");
+
+  React.useEffect(() => {
+    if (user?.id) {
+      getCoachSocialCues(user.id).then(cues => setSocialCues(cues));
+    }
+  }, [user]);
 
   const isVideo = (url) => {
     if (!url) return false;
@@ -67,6 +85,31 @@ export default function AddEditStepScreen({ route, navigation }) {
 
   const removeMedia = (indexToRemove) => {
     setLocalMediaUris((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleCreateSocialCue = async () => {
+    if (!newCueTitle.trim() || !newCueContent.trim()) {
+      Alert.alert("Missing Fields", "Please provide a title and script focus.");
+      return;
+    }
+    setSavingCue(true);
+    try {
+      const newCue = await saveSocialCue(user.id, {
+        title: newCueTitle.trim(),
+        type: newCueType,
+        content: newCueContent.trim()
+      });
+      setSocialCues(prev => [...prev, newCue]);
+      setSelectedCueId(newCue.id);
+      setShowModal(false);
+      setNewCueTitle("");
+      setNewCueContent("");
+      setNewCueType("exact_script");
+    } catch (err) {
+      Alert.alert("Error", "Could not save Social Cue");
+    } finally {
+      setSavingCue(false);
+    }
   };
 
   const handleSaveStep = async () => {
@@ -111,6 +154,15 @@ export default function AddEditStepScreen({ route, navigation }) {
       
       // Filter out any failed uploads (nulls) and store the final array
       const finalMediaUrls = results.filter(url => url !== null);
+      const stepSocialCueRaw = socialCues.find(c => c.id === selectedCueId) || null;
+      
+      // We must strip out the Firebase serverTimestamp before putting it inside an array
+      const stepSocialCue = stepSocialCueRaw ? {
+        id: stepSocialCueRaw.id,
+        title: stepSocialCueRaw.title,
+        type: stepSocialCueRaw.type,
+        content: stepSocialCueRaw.content,
+      } : null;
 
       const newStep = {
         id: stepId,
@@ -119,6 +171,7 @@ export default function AddEditStepScreen({ route, navigation }) {
         durationMinutes: parseInt(durationMinutes) || 0,
         isCompleted: false,
         mediaUrls: finalMediaUrls,
+        socialCue: stepSocialCue,
       };
 
       const updatedSteps = [...currentSteps];
@@ -301,6 +354,47 @@ export default function AddEditStepScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
+          {/* Social Cues Section */}
+          <View className="mb-8 p-4 bg-surface rounded-2xl border border-border">
+            <Text className="text-text-primary font-bold text-base mb-1">
+              Social Cue (Optional)
+            </Text>
+            <Text className="text-text-muted text-xs mb-4">
+              Attach a saved script that the AI will automatically announce when the messenger reaches this step.
+            </Text>
+
+            {socialCues.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <TouchableOpacity
+                  onPress={() => setSelectedCueId("")}
+                  className={`px-4 py-2 mr-2 rounded-full border ${selectedCueId === "" ? "bg-primary border-primary" : "bg-transparent border-border"}`}
+                >
+                  <Text className={selectedCueId === "" ? "text-white font-bold" : "text-text-primary"}>None</Text>
+                </TouchableOpacity>
+                {socialCues.map((cue) => (
+                  <TouchableOpacity
+                    key={cue.id}
+                    onPress={() => setSelectedCueId(cue.id)}
+                    className={`px-4 py-2 mr-2 rounded-full border ${selectedCueId === cue.id ? "bg-primary border-primary" : "bg-transparent border-border"}`}
+                  >
+                    <Text className={selectedCueId === cue.id ? "text-white font-bold" : "text-text-primary"}>
+                      {cue.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text className="text-text-muted italic mb-4">No social cues saved yet.</Text>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowModal(true)}
+              className="py-3 px-4 border border-dashed border-primary rounded-xl items-center justify-center bg-primary/5"
+            >
+              <Text className="text-primary-dark font-bold">+ Create New Social Cue</Text>
+            </TouchableOpacity>
+          </View>
+
           {isEditing && (
             <TouchableOpacity
               onPress={handleDeleteStep}
@@ -315,6 +409,67 @@ export default function AddEditStepScreen({ route, navigation }) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Create Social Cue Modal */}
+      <Modal visible={showModal} animationType="slide" transparent={true}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 justify-end bg-black/50">
+          <View className="bg-background rounded-t-3xl p-6 h-[80%]">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-2xl font-bold text-text-primary">New Social Cue</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)} className="p-2 bg-surface rounded-full">
+                <Text className="text-xl">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text className="font-bold text-text-primary mb-2">Title</Text>
+              <TextInput
+                value={newCueTitle}
+                onChangeText={setNewCueTitle}
+                placeholder="e.g. Chatty Greeting"
+                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary mb-6"
+              />
+
+              <Text className="font-bold text-text-primary mb-2">Type</Text>
+              <View className="flex-row gap-2 mb-6">
+                <TouchableOpacity
+                  onPress={() => setNewCueType("exact_script")}
+                  className={`flex-1 p-3 rounded-xl border ${newCueType === "exact_script" ? "bg-primary border-primary" : "bg-surface border-border"}`}
+                >
+                  <Text className={`text-center font-bold ${newCueType === "exact_script" ? "text-white" : "text-text-primary"}`}>Exact Script</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setNewCueType("ai_prompt")}
+                  className={`flex-1 p-3 rounded-xl border ${newCueType === "ai_prompt" ? "bg-primary border-primary" : "bg-surface border-border"}`}
+                >
+                  <Text className={`text-center font-bold ${newCueType === "ai_prompt" ? "text-white" : "text-text-primary"}`}>AI Prompt</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="font-bold text-text-primary mb-2">
+                {newCueType === "exact_script" ? "What should the AI say out loud?" : "What should the AI encourage them to do?"}
+              </Text>
+              <TextInput
+                value={newCueContent}
+                onChangeText={setNewCueContent}
+                placeholder={newCueType === "exact_script" ? "e.g. 'Hi, I have a delivery for you. Have a great day!'" : "e.g. 'Remind them to keep the interaction under 1 minute.'"}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary min-h-[100px] mb-8"
+              />
+
+              <TouchableOpacity
+                onPress={handleCreateSocialCue}
+                disabled={savingCue}
+                className="bg-primary py-4 rounded-xl items-center shadow-sm mb-12"
+              >
+                {savingCue ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-lg">Save Social Cue</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }

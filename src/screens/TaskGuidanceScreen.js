@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import { useUser } from "@clerk/clerk-expo";
 import { generateAndPlayAudio } from "../services/ttsService";
-import { getTaskHelp, getTaskHelpWithAudio } from "../services/aiService";
+import { getTaskHelp, getTaskHelpWithAudio, getProactiveSocialScript } from "../services/aiService";
 import {
   getPlanById,
   updateAssignmentStatus,
@@ -141,6 +141,51 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   const currentStep = plan?.steps?.[currentStepIndex];
   const isLastStep = currentStepIndex === (plan?.steps?.length || 0) - 1;
+
+  // Auto-play Social Cue if attached to this step
+  useEffect(() => {
+    let active = true; // Use this to prevent race conditions if they skip steps fast
+    const handleProactiveCue = async () => {
+      if (!plan || !currentStep?.socialCue) return;
+      
+      // Give the UI a tiny moment to render before talking
+      setTimeout(async () => {
+        if (!active) return;
+        
+        // Stop any current audio
+        if (currentSound) {
+          await currentSound.unloadAsync();
+          setCurrentSound(null);
+        }
+
+        setIsSpeaking(true);
+        const script = await getProactiveSocialScript(plan, currentStepIndex);
+        if (script && active) {
+          const sound = await generateAndPlayAudio(script);
+          if (sound && active) {
+            setCurrentSound(sound);
+            sound.setOnPlaybackStatusUpdate((status) => {
+              if (status.didJustFinish) {
+                setIsSpeaking(false);
+                sound.unloadAsync();
+                setCurrentSound(null);
+              }
+            });
+          } else {
+            setIsSpeaking(false);
+          }
+        } else {
+          setIsSpeaking(false);
+        }
+      }, 500);
+    };
+
+    handleProactiveCue();
+
+    return () => {
+      active = false;
+    };
+  }, [plan, currentStepIndex]);
 
   // Setup idle reminder for each step
   useEffect(() => {
@@ -313,7 +358,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       }
 
       // Send to Gemini 2.5 Flash via AI Service
-      const helpMsg = await getTaskHelpWithAudio(plan.title, currentStep.instruction, base64Audio, mimeType);
+      const helpMsg = await getTaskHelpWithAudio(plan, currentStepIndex, base64Audio, mimeType);
       
       setAiMessage(helpMsg);
 

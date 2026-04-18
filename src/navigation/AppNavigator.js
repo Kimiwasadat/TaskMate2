@@ -91,10 +91,10 @@ export default function AppNavigator() {
   const role = normalizeRole(user);
 
   return (
-    <NavigationContainer>
+    <>
       {role === ROLES.CLIENT && <ClientStack />}
       {role === ROLES.COACH && <CoachStack />}
       {role === ROLES.ADMIN && <AdminStack />}
-    </NavigationContainer>
+    </>
   );
 }

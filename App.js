@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NetworkProvider } from "./src/context/NetworkContext";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
@@ -11,36 +13,46 @@ import tokenCache from "./src/utils/cache";
 import IntroGate from "./src/components/IntroGate";
 import "./global.css";
 
+const AuthStackBase = createNativeStackNavigator();
+
 function AuthStack() {
-  const [authScreen, setAuthScreen] = useState("login"); // 'login' | 'roleSelection' | 'signup'
   const [selectedRole, setSelectedRole] = useState(null);
 
-  const handleSelectRole = (role) => {
-    setSelectedRole(role);
-    setAuthScreen("signup");
-  };
-
-  if (authScreen === "signup") {
-    return (
-      <SignUpScreen
-        selectedRole={selectedRole}
-        onNavigateBack={() => setAuthScreen("roleSelection")}
-        onNavigateToLogin={() => setAuthScreen("login")}
-      />
-    );
-  }
-
-  if (authScreen === "roleSelection") {
-    return (
-      <RoleSelectionScreen
-        onSelectRole={handleSelectRole}
-        onNavigateToLogin={() => setAuthScreen("login")}
-      />
-    );
-  }
-
+  // We are creating a simple switch-based navigator for the login flow
+  // to avoid complex deep-linking issues during the auth phase.
   return (
-    <LoginScreen onNavigateToSignUp={() => setAuthScreen("roleSelection")} />
+    <AuthStackBase.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStackBase.Screen name="Login">
+        {(props) => (
+          <LoginScreen 
+            {...props} 
+            onNavigateToSignUp={() => props.navigation.navigate("RoleSelection")} 
+          />
+        )}
+      </AuthStackBase.Screen>
+      <AuthStackBase.Screen name="RoleSelection">
+        {(props) => (
+          <RoleSelectionScreen 
+            {...props} 
+            onSelectRole={(role) => {
+              setSelectedRole(role);
+              props.navigation.navigate("SignUp");
+            }}
+            onNavigateToLogin={() => props.navigation.navigate("Login")} 
+          />
+        )}
+      </AuthStackBase.Screen>
+      <AuthStackBase.Screen name="SignUp">
+        {(props) => (
+          <SignUpScreen 
+            {...props} 
+            selectedRole={selectedRole}
+            onNavigateToLogin={() => props.navigation.navigate("Login")}
+            onNavigateBack={() => props.navigation.navigate("RoleSelection")}
+          />
+        )}
+      </AuthStackBase.Screen>
+    </AuthStackBase.Navigator>
   );
 }
 
@@ -51,15 +63,17 @@ export default function App() {
       tokenCache={tokenCache}
     >
       <NetworkProvider>
-        <IntroGate>
-          <StatusBar style="auto" />
-          <SignedIn>
-            <AppNavigator />
-          </SignedIn>
-          <SignedOut>
-            <AuthStack />
-          </SignedOut>
-        </IntroGate>
+        <NavigationContainer>
+          <IntroGate>
+            <StatusBar style="auto" />
+            <SignedIn>
+              <AppNavigator />
+            </SignedIn>
+            <SignedOut>
+              <AuthStack />
+            </SignedOut>
+          </IntroGate>
+        </NavigationContainer>
       </NetworkProvider>
     </ClerkProvider>
   );
