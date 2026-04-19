@@ -42,12 +42,13 @@ export async function registerForPushNotificationsAsync() {
     
     // Get the token that uniquely identifies this device
     try {
-      const projectId = "d87ed535-6aa5-46aa-bcbb-cbff67f2e140"; // Use actual project ID if available, otherwise it falls back
-      const pushTokenObject = await Notifications.getExpoPushTokenAsync({ projectId });
+      // An EAS projectId config is required for push notifications. 
+      // Removed the invalid hardcoded string below to stop EXPERIENCE_NOT_FOUND errors in development.
+      const pushTokenObject = await Notifications.getExpoPushTokenAsync();
       token = pushTokenObject.data;
       console.log("EXPO PUSH TOKEN:", token);
     } catch (e) {
-      console.log("Error getting push token", e);
+      console.log("Push notifications skipped: Run 'eas init' or enter a valid projectId to enable them.");
     }
   } else {
     console.log('Must use physical device for Push Notifications');
