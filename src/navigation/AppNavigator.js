@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useUser } from "@clerk/clerk-expo";
 import RequireRole from "../components/RequireRole";

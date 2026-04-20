@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NetworkProvider } from "./src/context/NetworkContext";
 import { StatusBar } from "expo-status-bar";
-import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
+import { ClerkProvider, SignedIn, SignedOut, useAuth } from "@clerk/clerk-expo";
 import AppNavigator from "./src/navigation/AppNavigator";
 import LoginScreen from "./src/screens/LoginScreen";
 import RoleSelectionScreen from "./src/screens/RoleSelectionScreen";
@@ -62,19 +62,29 @@ export default function App() {
       publishableKey={CLERK_PUBLISHABLE_KEY}
       tokenCache={tokenCache}
     >
-      <NetworkProvider>
-        <NavigationContainer>
-          <IntroGate>
-            <StatusBar style="auto" />
-            <SignedIn>
-              <AppNavigator />
-            </SignedIn>
-            <SignedOut>
-              <AuthStack />
-            </SignedOut>
-          </IntroGate>
-        </NavigationContainer>
-      </NetworkProvider>
+      <AppContent />
     </ClerkProvider>
+  );
+}
+
+function AppContent() {
+  const { isLoaded } = useAuth();
+
+  if (!isLoaded) return null;
+
+  return (
+    <NetworkProvider>
+      <IntroGate>
+        <NavigationContainer>
+          <StatusBar style="auto" />
+          <SignedIn>
+            <AppNavigator />
+          </SignedIn>
+          <SignedOut>
+            <AuthStack />
+          </SignedOut>
+        </NavigationContainer>
+      </IntroGate>
+    </NetworkProvider>
   );
 }

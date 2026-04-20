@@ -44,9 +44,13 @@ export const generateAndPlayAudio = async (text) => {
           });
 
           // Ensure audio plays even if phone is on silent (for iOS)
-          await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,
-          });
+          try {
+            await Audio.setAudioModeAsync({
+              playsInSilentModeIOS: true,
+            });
+          } catch (e) {
+            console.warn("Audio mode set failed safely", e);
+          }
 
           const { sound } = await Audio.Sound.createAsync(
             { uri: fileUri },

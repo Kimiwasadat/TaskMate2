@@ -58,9 +58,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
   const recordingTimeoutRef = useRef(null);
+  const isMounted = useRef(true);
 
   // Reminders
   const activeReminderRef = useRef(null);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const { isOffline } = useContext(NetworkContext);
   const { height } = useWindowDimensions();
@@ -142,6 +150,11 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const currentStep = plan?.steps?.[currentStepIndex];
   const isLastStep = currentStepIndex === (plan?.steps?.length || 0) - 1;
 
+  const stepMediaUrls = currentStep?.mediaUrls?.length > 0 
+    ? currentStep.mediaUrls 
+    : (currentStep?.mediaUrl ? [currentStep.mediaUrl] : []);
+  const hasMedia = stepMediaUrls.length > 0;
+
   // Auto-play Social Cue if attached to this step
   useEffect(() => {
     let active = true; // Use this to prevent race conditions if they skip steps fast
@@ -150,32 +163,39 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       
       // Give the UI a tiny moment to render before talking
       setTimeout(async () => {
-        if (!active) return;
+        if (!active || !isMounted.current) return;
         
         // Stop any current audio
         if (currentSound) {
-          await currentSound.unloadAsync();
-          setCurrentSound(null);
+          try {
+            await currentSound.unloadAsync();
+          } catch (e) {
+            console.log("Audio cleanup failed safely");
+          }
+          if (isMounted.current) setCurrentSound(null);
         }
 
-        setIsSpeaking(true);
+        if (isMounted.current) setIsSpeaking(true);
         const script = await getProactiveSocialScript(plan, currentStepIndex);
-        if (script && active) {
+        if (script && active && isMounted.current) {
           const sound = await generateAndPlayAudio(script);
-          if (sound && active) {
+          if (sound && active && isMounted.current) {
             setCurrentSound(sound);
             sound.setOnPlaybackStatusUpdate((status) => {
               if (status.didJustFinish) {
-                setIsSpeaking(false);
-                sound.unloadAsync();
-                setCurrentSound(null);
+                if (isMounted.current) {
+                  setIsSpeaking(false);
+                  sound.unloadAsync().catch(() => {});
+                  setCurrentSound(null);
+                }
               }
             });
           } else {
-            setIsSpeaking(false);
+            if (isMounted.current) setIsSpeaking(false);
+            if (sound) sound.unloadAsync().catch(() => {});
           }
         } else {
-          setIsSpeaking(false);
+          if (isMounted.current) setIsSpeaking(false);
         }
       }, 500);
     };
@@ -267,20 +287,23 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       setIsSpeaking(true);
       try {
         const sound = await generateAndPlayAudio(textToSpeak);
-        if (sound) {
+        if (sound && isMounted.current) {
           setCurrentSound(sound);
           sound.setOnPlaybackStatusUpdate((status) => {
             if (status.didJustFinish) {
-              setIsSpeaking(false);
-              sound.unloadAsync();
-              setCurrentSound(null);
+              if (isMounted.current) {
+                setIsSpeaking(false);
+                sound.unloadAsync().catch(() => {});
+                setCurrentSound(null);
+              }
             }
           });
         } else {
-          setIsSpeaking(false);
+          if (isMounted.current) setIsSpeaking(false);
+          if (sound) sound.unloadAsync().catch(() => {});
         }
       } catch (error) {
-        setIsSpeaking(false);
+        if (isMounted.current) setIsSpeaking(false);
         console.error("Audio generation failed:", error);
       }
     }
@@ -360,29 +383,33 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       // Send to Gemini 2.5 Flash via AI Service
       const helpMsg = await getTaskHelpWithAudio(plan, currentStepIndex, base64Audio, mimeType);
       
+      if (!isMounted.current) return;
       setAiMessage(helpMsg);
 
       // Play the AI tip in a natural voice instantly
       setIsSpeaking(true);
       const sound = await generateAndPlayAudio(helpMsg);
-      if (sound) {
+      if (sound && isMounted.current) {
         setCurrentSound(sound);
         sound.setOnPlaybackStatusUpdate((status) => {
           if (status.didJustFinish) {
-            setIsSpeaking(false);
-            sound.unloadAsync();
-            setCurrentSound(null);
+            if (isMounted.current) {
+              setIsSpeaking(false);
+              sound.unloadAsync().catch(() => {});
+              setCurrentSound(null);
+            }
           }
         });
       } else {
-        setIsSpeaking(false);
+        if (isMounted.current) setIsSpeaking(false);
+        if (sound) sound.unloadAsync().catch(() => {});
       }
 
     } catch (err) {
       console.error("Failed to process recording", err);
-      setAiMessage("Sorry, I could not connect to the AI service right now.");
+      if (isMounted.current) setAiMessage("Sorry, I could not connect to the AI service right now.");
     } finally {
-      setIsAIHelperLoading(false);
+      if (isMounted.current) setIsAIHelperLoading(false);
     }
   };
 
@@ -640,43 +667,43 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       >
         {/* Main Content Wrapper - Forces Help Section Below Fold */}
         <View style={{ minHeight: height * 0.60 }} className="justify-center">
-          {/* Support both the new mediaUrls array, and fallback to legacy mediaUrl string */}
-          {(currentStep?.mediaUrls?.length > 0 || currentStep?.mediaUrl) ? (
+          
           <View className="mb-6">
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 24 }}
-            >
-              {(currentStep?.mediaUrls || [currentStep.mediaUrl]).map((url, index) => (
-                <View key={index} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
-                  {isVideo(url) ? (
-                    <Video
-                      source={{ uri: url }}
-                      style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
-                      useNativeControls
-                      resizeMode="contain"
-                      isLooping
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: url }}
-                      className="w-full h-full"
-                      resizeMode="cover"
-                    />
-                  )}
-                </View>
-              ))}
-            </ScrollView>
+            <View style={{ display: hasMedia ? 'flex' : 'none' }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 24 }}
+              >
+                {stepMediaUrls.map((url, index) => (
+                  <View key={`${index}-${url}`} className="w-[315px] h-64 rounded-3xl overflow-hidden bg-surface/50 border border-border shadow-sm mr-4">
+                    {isVideo(url) ? (
+                      <Video
+                        source={{ uri: url }}
+                        style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
+                        useNativeControls
+                        resizeMode="contain"
+                        isLooping
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: url }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+            
+            <View style={{ display: !hasMedia ? 'flex' : 'none' }} className="w-full h-40 bg-surface rounded-3xl items-center justify-center border border-dashed border-border shadow-sm">
+              <Text className="text-text-muted font-medium">
+                {currentStep?.title || "Step Instruction"}
+              </Text>
+            </View>
           </View>
-        ) : (
-          <View className="w-full h-40 bg-surface rounded-3xl mb-6 items-center justify-center border border-dashed border-border shadow-sm">
-            <Text className="text-text-muted font-medium">
-              {currentStep?.title || "Step Instruction"}
-            </Text>
-          </View>
-        )}
 
         {/* Text Instruction - Large & Clear */}
         <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-8">
