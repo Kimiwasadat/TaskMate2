@@ -5,7 +5,9 @@ import {
   SectionList,
   TouchableOpacity,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { getAssignmentsForClient } from "../services/firestoreService";
@@ -142,6 +144,8 @@ export default function DashboardScreen({ navigation }) {
     );
   }
 
+  const coachId = tasks.length > 0 ? tasks[0].coachId : null;
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <DashboardHeader
@@ -182,6 +186,40 @@ export default function DashboardScreen({ navigation }) {
           </View>
         )}
       </View>
+
+      {/* Floating Message Coach Button */}
+      {coachId && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() =>
+            navigation.navigate("Chat", {
+              coachId: coachId,
+              clientId: user.id,
+            })
+          }
+        >
+          <Ionicons name="chatbubbles" size={28} color="white" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    backgroundColor: "#3B82F6",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+});

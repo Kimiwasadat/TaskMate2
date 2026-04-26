@@ -12,6 +12,7 @@ import {
   arrayUnion,
   arrayRemove,
   onSnapshot,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -411,3 +412,72 @@ export const getCoachSocialCues = async (coachId) => {
   }
 };
 
+// --- CHAT & MESSAGING OPERATIONS ---
+
+export const sendMessage = async (coachId, clientId, senderId, text, taskContext = null) => {
+  try {
+    const chatId = `${coachId}_${clientId}`;
+    const messagesRef = collection(db, `chats/${chatId}/messages`);
+    const newMessage = {
+      senderId,
+      text,
+      taskContext, // Optional context like "Task: Clean Kitchen, Step 3"
+      createdAt: serverTimestamp(),
+    };
+    await addDoc(messagesRef, newMessage);
+
+    // Also update a "lastMessage" field on the chat document itself for the list view
+    const chatDocRef = doc(db, "chats", chatId);
+    await setDoc(chatDocRef, {
+      coachId,
+      clientId,
+      lastMessageText: text,
+      lastMessageAt: serverTimestamp(),
+    }, { merge: true });
+
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const subscribeToMessages = (coachId, clientId, callback) => {
+  const chatId = `${coachId}_${clientId}`;
+  const q = query(
+    collection(db, `chats/${chatId}/messages`),
+    orderBy("createdAt", "asc")
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(messages);
+  });
+};
+
+export const getAssignedClientsForCoach = async (coachId) => {
+  try {
+    // Get all assignments for this coach
+    const q = query(collection(db, "assignments"), where("coachId", "==", coachId));
+    const snapshot = await getDocs(q);
+    
+    // Extract unique client IDs
+    const clientIds = [...new Set(snapshot.docs.map(doc => doc.data().clientId))];
+    
+    // Fetch details for those clients
+    const clients = [];
+    for (const clientId of clientIds) {
+      if (!clientId) continue;
+      const userDoc = await getDoc(doc(db, "users", clientId));
+      if (userDoc.exists()) {
+        clients.push({ id: userDoc.id, ...userDoc.data() });
+      }
+    }
+    return clients;
+  } catch (error) {
+    console.error("Error fetching assigned clients:", error);
+    return [];
+  }
+};

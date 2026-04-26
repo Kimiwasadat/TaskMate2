@@ -421,39 +421,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }
   };
 
-  const handleAskCoach = async () => {
-    try {
-      if (assignmentId) {
-        if (isOffline) {
-          queueOfflineAction({
-            type: 'TOGGLE_HELP',
-            payload: { assignmentId, needsHelp: true }
-          });
-          updateOfflineAssignment(assignmentId, { needsHelp: true });
-        } else {
-          await toggleAssignmentHelp(assignmentId, true);
-        }
-      }
-      // Send a push notification to the coach
-      if (plan?.coachId && !isOffline) {
-        try {
-          const coachToken = await getUserPushToken(plan.coachId);
-          if (coachToken) {
-            await sendPushNotification(
-              coachToken,
-              "Employee Needs Help",
-              `${user?.firstName || "An employee"} is stuck on step ${currentStepIndex + 1} of "${plan.title}".`
-            );
-          }
-        } catch (pushError) {
-          console.error("Failed to send push notification to coach, but DB updated:", pushError);
-        }
-      }
-      setCoachNotified(true);
-    } catch (error) {
-      console.error("Error setting help status:", error);
-      Alert.alert("Error", "Failed to update help status.");
+  const handleMessageCoach = () => {
+    if (!plan?.coachId) {
+      alert("No coach assigned to this plan.");
+      return;
     }
+    const context = `Task: "${plan.title}"\nStep ${currentStepIndex + 1}: ${currentStep?.instruction || ""}`;
+    navigation.navigate("Chat", {
+      coachId: plan.coachId,
+      clientId: user.id,
+      taskContext: context,
+    });
   };
 
   // Keep assignment progress synced when step changes
@@ -832,32 +810,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
               <TouchableOpacity
                 className="w-full flex-row items-center py-4 px-5 rounded-xl border border-border bg-surface shadow-sm"
-                onPress={handleAskCoach}
+                onPress={handleMessageCoach}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel="Contact your coach for help"
+                accessibilityLabel="Message your coach for help"
               >
-                <Text className="text-2xl mr-4">🙋🏽‍♂️</Text>
+                <Text className="text-2xl mr-4">💬</Text>
                 <Text className="text-text-primary font-bold text-lg flex-1">
-                  Contact Coach
+                  Message Coach
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* Coach Notified Banner */}
-            {coachNotified && (
-              <View className="w-full bg-green-50 border border-green-200 rounded-xl p-4 mt-6 flex-row items-center" accessibilityLiveRegion="polite">
-                <Text className="text-xl mr-3">✅</Text>
-                <View className="flex-1">
-                  <Text className="text-green-800 font-bold text-base mb-1">
-                    Coach Notified
-                  </Text>
-                  <Text className="text-green-700 text-sm font-medium">
-                    Your coach has been alerted and will reach out to help you shortly.
-                  </Text>
-                </View>
-              </View>
-            )}
           </View>
         </View>
       </ScrollView>

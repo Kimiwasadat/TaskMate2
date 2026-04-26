@@ -18,6 +18,8 @@ import AssignmentScreen from "../screens/AssignmentScreen";
 import AddEditStepScreen from "../screens/AddEditStepScreen";
 import AssignPlanScreen from "../screens/AssignPlanScreen";
 import CoachProgressScreen from "../screens/CoachProgressScreen";
+import ChatScreen from "../screens/ChatScreen";
+import CoachMessagesScreen from "../screens/CoachMessagesScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +34,7 @@ function ClientStack() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="TaskGuidance" component={TaskGuidanceScreen} />
         <Stack.Screen name="TaskComplete" component={TaskCompleteScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
       </Stack.Navigator>
     </RequireRole>
   );
@@ -53,6 +56,8 @@ function CoachStack() {
         <Stack.Screen name="AssignPlan" component={AssignPlanScreen} />
         <Stack.Screen name="CoachProgress" component={CoachProgressScreen} />
         <Stack.Screen name="AddEditStep" component={AddEditStepScreen} />
+        <Stack.Screen name="CoachMessages" component={CoachMessagesScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
       </Stack.Navigator>
     </RequireRole>
   );
