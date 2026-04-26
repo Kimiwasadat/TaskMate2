@@ -1,29 +1,19 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as FileSystem from 'expo-file-system/legacy';
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-
-let genAI = null;
-if (GEMINI_API_KEY && GEMINI_API_KEY !== "your_gemini_api_key_here") {
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-}
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
 /**
- * Calls the Google Gemini API to generate accessible help for a specific step.
- *
- * @param {object} plan - The entire plan object containing all steps.
- * @param {number} currentStepIndex - The index of the current step.
- * @returns {Promise<string>} - The AI-generated help text.
+ * Calls the OpenAI API to generate accessible help for a specific step.
+ * Using OpenAI as a robust fallback since Gemini API quotas were exceeded.
  */
 export const getTaskHelp = async (plan, currentStepIndex) => {
   const currentStep = plan.steps[currentStepIndex];
-  if (!genAI) {
-    console.warn("No valid Gemini API key found.");
-    return "I'm sorry, the AI assistant is currently asleep. Please ask your coach for help with this step!";
+  if (!OPENAI_API_KEY) {
+    console.warn("No valid OpenAI API key found.");
+    return "I'm sorry, the AI assistant is asleep right now. Please ask your coach!";
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const prompt = `You are a supportive, patient, and highly accessible task assistant helping individuals with ASD or cognitive challenges complete everyday tasks independently. 
     
 The user is currently trying to complete the overall activity: "${plan.title}".
@@ -34,9 +24,20 @@ The user is currently stuck on Step ${currentStepIndex + 1}: "${currentStep.inst
 
 Provide a extremely short, highly encouraging, and simplified 1 to 2 sentence tip to help them figure out what to do. Speak directly to the user in a warm, conversational, and guiding tone. Do not use complex language, lists, or formatting. Keep the response under 30 words so it is easy to read out loud.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim();
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
   } catch (error) {
     console.error("Error fetching AI help:", error);
     return "I ran into a problem thinking of a tip. Take a deep breath and try reading the step one more time!";
@@ -44,24 +45,41 @@ Provide a extremely short, highly encouraging, and simplified 1 to 2 sentence ti
 };
 
 /**
- * Calls the Google Gemini API to generate accessible help for a specific step based on an audio question.
- *
- * @param {object} plan - The entire plan object
- * @param {number} currentStepIndex - The index of the step the user is stuck on.
- * @param {string} base64Audio - The base64 string of the recorded audio question.
- * @param {string} mimeType - The mime type of the audio.
- * @returns {Promise<string>} - The AI-generated help text.
+ * Uses OpenAI Whisper and GPT-4o-mini to generate accessible help from audio.
  */
 export const getTaskHelpWithAudio = async (plan, currentStepIndex, base64Audio, mimeType) => {
   const currentStep = plan.steps[currentStepIndex];
-  if (!genAI) {
-    console.warn("No valid Gemini API key found.");
-    return "I'm sorry, the AI assistant is currently asleep. Please ask your coach for help with this step!";
+  if (!OPENAI_API_KEY) {
+    console.warn("No valid OpenAI API key found.");
+    return "I'm sorry, the AI assistant is asleep right now. Please ask your coach!";
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // 1. Write the base64 audio to a temporary file so we can send it via FormData
+    const tempUri = FileSystem.cacheDirectory + 'temp_audio.m4a';
+    await FileSystem.writeAsStringAsync(tempUri, base64Audio, { encoding: 'base64' });
 
+    const formData = new FormData();
+    formData.append('file', {
+      uri: tempUri,
+      name: 'audio.m4a',
+      type: mimeType || 'audio/m4a'
+    });
+    formData.append('model', 'whisper-1');
+
+    // 2. Transcribe the audio using Whisper
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: formData
+    });
+    
+    const whisperData = await whisperResponse.json();
+    const transcript = whisperData.text || "I need help with this step.";
+
+    // 3. Get the answer from GPT
     const prompt = `You are a supportive, patient, and highly accessible task assistant helping individuals with ASD or cognitive challenges complete everyday tasks independently. 
     
 The user is currently trying to complete the overall activity: "${plan.title}".
@@ -70,20 +88,24 @@ ${plan.steps.map((s, i) => `${i + 1}. ${s.title}: ${s.instruction}`).join('\n')}
 
 The user is currently stuck on Step ${currentStepIndex + 1}: "${currentStep.instruction}".
 
-Listen to the attached audio file. This is the user verbally asking a specific question about what they should do next or what they are stuck on. Their question might reference previous or future steps in this plan.
+Listen to the attached audio file. This is the user verbally asking a specific question about what they should do next or what they are stuck on. Their question was transcribed as: "${transcript}"
 
 Answer their exact question using an extremely short, highly encouraging, and simplified 1 to 2 sentence tip to help them figure out what to do. Speak directly to the user in a warm, conversational, and guiding tone. Do not use complex language, lists, or formatting. Keep the response under 30 words so it is easy to read out loud.`;
 
-    const audioData = {
-      inlineData: {
-        data: base64Audio,
-        mimeType: mimeType || "audio/m4a"
-      }
-    };
-
-    const result = await model.generateContent([prompt, audioData]);
-    const response = await result.response;
-    return response.text().trim();
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
   } catch (error) {
     console.error("Error fetching AI audio help:", error);
     return "I ran into a problem listening to your question. Take a deep breath and try reading the step one more time!";
@@ -91,9 +113,7 @@ Answer their exact question using an extremely short, highly encouraging, and si
 };
 
 /**
- * Generates a proactive social script based on the coach's configured Social Cue.
- * If the cue is an exact script, it returns it instantly.
- * If the cue is an AI prompt, it uses Gemini to generate a context-aware response.
+ * Generates a proactive social script using GPT-4o-mini
  */
 export const getProactiveSocialScript = async (plan, currentStepIndex) => {
   const currentStep = plan.steps[currentStepIndex];
@@ -101,20 +121,17 @@ export const getProactiveSocialScript = async (plan, currentStepIndex) => {
 
   const { type, content } = currentStep.socialCue;
 
-  // 1. If it's an exact script, bypass AI entirely and just return it to be spoken.
+  // 1. If it's an exact script, bypass AI entirely and just return it.
   if (type === "exact_script") {
     return content;
   }
 
-  // 2. If it's an AI prompt, generate a personalized voiceover
-  if (!genAI) {
-    console.warn("No valid Gemini API key found for proactive cue.");
+  // 2. Generate script using OpenAI
+  if (!OPENAI_API_KEY) {
     return null;
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const prompt = `You are acting as the voice of an assistive job coach speaking through an earpiece/app to an employee with ASD.
     
 They are currently doing the task: "${plan.title}".
@@ -126,12 +143,22 @@ Their human coach has left the following behavioral instructions for how you sho
 Generate exactly what you will say to the employee right now. Speak directly to them in a brief, encouraging tone. 
 Keep it VERY short (1-2 sentences max). Do NOT use quotes or formatting, just the raw spoken text.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim();
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
   } catch (error) {
     console.error("Error generating proactive social script:", error);
-    return null; // Fail silently so we don't disrupt the user if AI fails
+    return null; // Fail silently so we don't disrupt the user
   }
 };
-
