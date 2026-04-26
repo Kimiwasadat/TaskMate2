@@ -26,12 +26,8 @@ export default function ChatScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef(null);
 
-  // If opened from a task, optionally prepopulate the input
-  useEffect(() => {
-    if (taskContext && role === ROLES.CLIENT) {
-      setInputText(`Regarding: ${taskContext}\n\n`);
-    }
-  }, [taskContext, role]);
+  // We no longer prepopulate the input text with taskContext, 
+  // as it is already rendered as a separate context tag above the message bubble.
 
   useEffect(() => {
     if (!coachId || !clientId) return;

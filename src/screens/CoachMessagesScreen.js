@@ -34,30 +34,35 @@ export default function CoachMessagesScreen({ navigation }) {
     }
   };
 
-  const renderClientItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.clientItem}
-      onPress={() =>
-        navigation.navigate("Chat", {
-          coachId: user.id,
-          clientId: item.id,
-        })
-      }
-    >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.firstName?.[0] || item.email?.[0]?.toUpperCase() || "?"}
-        </Text>
-      </View>
-      <View style={styles.clientInfo}>
-        <Text style={styles.clientName}>
-          {item.firstName} {item.lastName}
-        </Text>
-        <Text style={styles.clientEmail}>{item.email}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-    </TouchableOpacity>
-  );
+  const renderClientItem = ({ item }) => {
+    const displayName = item.username || item.firstName || "Messenger";
+    const displayInitial = displayName[0]?.toUpperCase() || "?";
+    
+    return (
+      <TouchableOpacity
+        style={styles.clientItem}
+        onPress={() =>
+          navigation.navigate("Chat", {
+            coachId: user.id,
+            clientId: item.id,
+          })
+        }
+      >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {displayInitial}
+          </Text>
+        </View>
+        <View style={styles.clientInfo}>
+          <Text style={styles.clientName}>
+            {displayName} {item.lastName || ""}
+          </Text>
+          {item.email ? <Text style={styles.clientEmail}>{item.email}</Text> : null}
+        </View>
+        <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
