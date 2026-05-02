@@ -20,7 +20,7 @@ import {
   toggleAssignmentHelp, // Added
   getUserPushToken,
 } from "../services/firestoreService";
-import { scheduleIdleReminder, cancelReminder, sendPushNotification } from "../services/notificationService";
+import { scheduleIdleReminder, cancelReminder, sendPushNotification, scheduleRepeatingReminder } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
 import { Video, Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
@@ -62,6 +62,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   // Reminders
   const activeReminderRef = useRef(null);
+  const overtimeReminderRef = useRef(null);
+  const [isOvertime, setIsOvertime] = useState(false);
+  const prevStepTimeLeftRef = useRef(-1);
 
   useEffect(() => {
     isMounted.current = true;
@@ -116,10 +119,24 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   useEffect(() => {
     if (plan?.steps?.[currentStepIndex]?.durationMinutes) {
       setStepTimeLeft(plan.steps[currentStepIndex].durationMinutes * 60);
+    } else {
+      setStepTimeLeft(0);
     }
   }, [plan, currentStepIndex]);
 
   useEffect(() => {
+    // Check for overtime transition
+    if (prevStepTimeLeftRef.current > 0 && stepTimeLeft === 0 && !isOvertime) {
+      const durationMins = plan?.steps?.[currentStepIndex]?.durationMinutes;
+      if (durationMins && durationMins > 0) {
+        setIsOvertime(true);
+        scheduleRepeatingReminder(currentStep?.instruction || plan?.title || "this task", 60).then(id => {
+          overtimeReminderRef.current = id;
+        });
+      }
+    }
+    prevStepTimeLeftRef.current = stepTimeLeft;
+
     if (timeLeft <= 0 && stepTimeLeft <= 0) return;
 
     const timerId = setInterval(() => {
@@ -128,7 +145,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [timeLeft, stepTimeLeft]);
+  }, [timeLeft, stepTimeLeft, currentStepIndex, plan, currentStep, isOvertime]);
 
   useEffect(() => {
     return () => {
@@ -214,9 +231,25 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         await cancelReminder(activeReminderRef.current);
         activeReminderRef.current = null;
       }
+      if (overtimeReminderRef.current) {
+        await cancelReminder(overtimeReminderRef.current);
+        overtimeReminderRef.current = null;
+      }
+      setIsOvertime(false);
+      
       if (plan && currentStep) {
-        const id = await scheduleIdleReminder(currentStep.instruction, 30);
-        activeReminderRef.current = id;
+        const durationMins = currentStep.durationMinutes;
+        
+        // Only schedule a reminder if a timer is set for the step
+        if (durationMins && durationMins > 0) {
+          // Calculate 4/5 of the time elapsed (e.g. 20 mins -> 16 mins)
+          const delaySeconds = Math.floor(durationMins * 60 * 0.8);
+          
+          if (delaySeconds > 0) {
+            const id = await scheduleIdleReminder(currentStep.instruction, delaySeconds);
+            activeReminderRef.current = id;
+          }
+        }
       }
     };
 
@@ -226,6 +259,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       if (activeReminderRef.current) {
         cancelReminder(activeReminderRef.current);
         activeReminderRef.current = null;
+      }
+      if (overtimeReminderRef.current) {
+        cancelReminder(overtimeReminderRef.current);
+        overtimeReminderRef.current = null;
       }
     };
   }, [currentStepIndex, plan]);

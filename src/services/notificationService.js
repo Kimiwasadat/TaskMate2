@@ -129,3 +129,30 @@ export async function sendPushNotification(expoPushToken, title, body) {
     console.error("Error sending push to Expo:", error);
   }
 }
+
+/**
+ * Schedules a repeating local reminder on the device for overtime
+ * @param {string} taskName 
+ * @param {number} intervalSeconds (Defaults to 60 seconds)
+ * @returns {string} notificationId
+ */
+export async function scheduleRepeatingReminder(taskName, intervalSeconds = 60) {
+  try {
+    const identifier = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Overtime Alert! ⏰",
+        body: `You are over time on "${taskName}". Please stay on task!`,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: intervalSeconds,
+        repeats: true,
+      },
+    });
+    return identifier;
+  } catch (error) {
+    console.error("Error scheduling repeating reminder:", error);
+    return null;
+  }
+}
