@@ -776,21 +776,27 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Listen to instruction"
-                className="w-full flex-row items-center py-4 px-5 rounded-xl bg-surface border border-border shadow-sm"
+                className={`w-full flex-row items-center py-4 px-5 rounded-xl shadow-sm ${
+                  isSpeaking && !aiResponse && !aiMessage
+                    ? "bg-cyan-50 border-2 border-cyan-500 shadow-md"
+                    : "border border-border bg-surface"
+                }`}
               >
                 <Text className="text-2xl mr-4">
                   {isSpeaking && !aiResponse && !aiMessage ? "🔊" : "🔈"}
                 </Text>
-                <Text className="text-lg font-bold text-text-primary flex-1">
+                <Text className={`text-lg font-bold flex-1 ${
+                  isSpeaking && !aiResponse && !aiMessage ? "text-cyan-700" : "text-text-primary"
+                }`}>
                   Listen
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                className={`w-full flex-row items-center py-4 px-5 rounded-xl border shadow-sm ${
-                  isRecording 
-                    ? "bg-red-50 border-red-300 shadow-md" 
-                    : "border-border bg-surface"
+                className={`w-full flex-row items-center py-4 px-5 rounded-xl shadow-sm ${
+                  isRecording || isAIHelperLoading || (isSpeaking && (aiResponse || aiMessage))
+                    ? "bg-cyan-50 border-2 border-cyan-500 shadow-md" 
+                    : "border border-border bg-surface"
                 }`}
                 onPress={handleAIHelp}
                 disabled={isAIHelperLoading}
@@ -799,11 +805,15 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                 accessibilityLabel="Get help from AI using voice"
               >
                 {isAIHelperLoading ? (
-                  <ActivityIndicator color="#666" size="small" style={{ marginRight: 16 }} />
+                  <ActivityIndicator color="#0ea5e9" size="small" style={{ marginRight: 16 }} />
                 ) : (
                   <Text className="text-2xl mr-4">{isRecording ? "🔴" : "🎙️"}</Text>
                 )}
-                <Text className={`text-lg font-bold flex-1 ${isRecording ? "text-red-600" : "text-text-primary"}`}>
+                <Text className={`text-lg font-bold flex-1 ${
+                  isRecording || isAIHelperLoading || (isSpeaking && (aiResponse || aiMessage)) 
+                    ? "text-cyan-700" 
+                    : "text-text-primary"
+                }`}>
                   {isRecording ? "Listening... Tap to stop" : "AI Help"}
                 </Text>
               </TouchableOpacity>
