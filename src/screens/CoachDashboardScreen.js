@@ -8,6 +8,7 @@ import {
     Alert,
     ScrollView,
     StyleSheet,
+    RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser, useAuth } from "@clerk/clerk-expo";
@@ -21,7 +22,14 @@ export default function CoachDashboardScreen({ navigation }) {
     const { signOut } = useAuth();
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadPlans();
+        setRefreshing(false);
+    };
 
     const loadPlans = async () => {
         if (!user) return;
@@ -176,14 +184,19 @@ export default function CoachDashboardScreen({ navigation }) {
                         <LoadingLogo />
                     </View>
                 ) : plans.length === 0 ? (
-                    <View className="flex-1 justify-center items-center mt-20">
-                        <Text className="text-text-muted font-semibold text-lg mb-2">
+                    <ScrollView 
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 }}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+                        }
+                    >
+                        <Text className="text-text-muted font-semibold text-lg mb-2 mt-10">
                             No plans created yet.
                         </Text>
                         <Text className="text-text-muted text-center px-8 text-base">
                             Create your first training plan to assign to employees.
                         </Text>
-                    </View>
+                    </ScrollView>
                 ) : (
                     <FlatList
                         data={plans}
@@ -191,6 +204,9 @@ export default function CoachDashboardScreen({ navigation }) {
                         renderItem={renderPlanCard}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 100 }}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+                        }
                     />
                 )}
             </View>

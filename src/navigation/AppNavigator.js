@@ -4,7 +4,9 @@ import { useUser } from "@clerk/clerk-expo";
 import RequireRole from "../components/RequireRole";
 import { normalizeRole, ROLES } from "../auth/rbac";
 import { registerForPushNotificationsAsync } from "../services/notificationService";
-import { saveUserPushToken } from "../services/firestoreService";
+import { saveUserPushToken, subscribeToCoachAssignments } from "../services/firestoreService";
+import * as Notifications from "expo-notifications";
+import { useRef } from "react";
 
 import DashboardScreen from "../screens/DashboardScreen";
 import TaskGuidanceScreen from "../screens/TaskGuidanceScreen";
@@ -63,6 +65,51 @@ function CoachStack() {
   );
 }
 
+// Listener for local notifications when Coach has the app open (fallback for Expo push)
+function CoachNotificationListener() {
+  const { user } = useUser();
+  const prevAssignmentsRef = useRef({});
+  const isInitialLoadRef = useRef(true);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const unsubscribe = subscribeToCoachAssignments(user.id, (assignments) => {
+      if (isInitialLoadRef.current) {
+        assignments.forEach(a => {
+          prevAssignmentsRef.current[a.id] = a;
+        });
+        isInitialLoadRef.current = false;
+        return;
+      }
+
+      assignments.forEach(assignment => {
+        const prev = prevAssignmentsRef.current[assignment.id];
+        
+        if (prev && prev.status !== "completed" && assignment.status === "completed") {
+          const employeeName = assignment.userDetails?.firstName || assignment.userDetails?.username || "Your messenger";
+          const planTitle = assignment.planDetails?.title || "a task";
+          
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Task Completed! 🎉",
+              body: `${employeeName} just finished '${planTitle}'!`,
+              sound: true,
+            },
+            trigger: null,
+          });
+        }
+        
+        prevAssignmentsRef.current[assignment.id] = assignment;
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  return null;
+}
+
 // Admin Flow
 function AdminStack() {
   return (
@@ -97,7 +144,12 @@ export default function AppNavigator() {
   return (
     <>
       {role === ROLES.CLIENT && <ClientStack />}
-      {role === ROLES.COACH && <CoachStack />}
+      {role === ROLES.COACH && (
+        <>
+          <CoachStack />
+          <CoachNotificationListener />
+        </>
+      )}
       {role === ROLES.ADMIN && <AdminStack />}
     </>
   );
