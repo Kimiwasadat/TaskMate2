@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  ScrollView,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +24,7 @@ export default function DashboardScreen({ navigation }) {
   const { signOut } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const { isOffline } = useContext(NetworkContext);
 
@@ -33,36 +36,43 @@ export default function DashboardScreen({ navigation }) {
     return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      if (user) {
-        console.log("---- FETCHING ASSIGNMENTS FOR USER ID:", user.id);
-        try {
-          if (isOffline) {
-            console.log("Offline: Loading assignments from local storage");
-            const cachedTasks = await getOfflineAssignments();
-            setTasks(cachedTasks || []);
-          } else {
-            console.log("Online: Fetching from DB");
-            const fetchedTasks = await getAssignmentsForClient(user.id);
-            setTasks(fetchedTasks || []);
-            await saveOfflineAssignments(fetchedTasks || []);
-          }
-        } catch (error) {
-          console.error("Error fetching tasks:", error);
-          if (!isOffline) {
-            // Fallback
-            const cachedTasks = await getOfflineAssignments();
-            setTasks(cachedTasks || []);
-          } else {
-            setTasks([]);
-          }
+  const fetchTasks = async () => {
+    if (user) {
+      console.log("---- FETCHING ASSIGNMENTS FOR USER ID:", user.id);
+      try {
+        if (isOffline) {
+          console.log("Offline: Loading assignments from local storage");
+          const cachedTasks = await getOfflineAssignments();
+          setTasks(cachedTasks || []);
+        } else {
+          console.log("Online: Fetching from DB");
+          const fetchedTasks = await getAssignmentsForClient(user.id);
+          setTasks(fetchedTasks || []);
+          await saveOfflineAssignments(fetchedTasks || []);
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        if (!isOffline) {
+          // Fallback
+          const cachedTasks = await getOfflineAssignments();
+          setTasks(cachedTasks || []);
+        } else {
+          setTasks([]);
         }
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchTasks();
   }, [user, isOffline]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTasks();
+    setRefreshing(false);
+  };
 
   // Timer is temporarily removed pending realtime implementation
 
@@ -184,15 +194,23 @@ export default function DashboardScreen({ navigation }) {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 20 }}
             stickySectionHeadersEnabled={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+            }
           />
         ) : (
-          <View className="items-center justify-center py-20 flex-1">
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+            }
+          >
             <Text className="text-4xl mb-4">📭</Text>
             <Text className="text-text-primary text-xl font-bold mb-2">You're all caught up!</Text>
             <Text className="text-text-muted text-center max-w-[250px]">
               No tasks are currently assigned to you. Enjoy your day!
             </Text>
-          </View>
+          </ScrollView>
         )}
       </View>
 
