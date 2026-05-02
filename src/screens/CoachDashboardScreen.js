@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
     View,
     Text,
@@ -7,10 +7,12 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    StyleSheet,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect } from "@react-navigation/native";
-import { getPlansByCoach, deletePlan } from "../services/firestoreService";
+import { getPlansByCoach, deletePlan, subscribeToTotalUnreadCount } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 import DashboardHeader from "../components/DashboardHeader";
 
@@ -19,6 +21,7 @@ export default function CoachDashboardScreen({ navigation }) {
     const { signOut } = useAuth();
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const loadPlans = async () => {
         if (!user) return;
@@ -40,6 +43,14 @@ export default function CoachDashboardScreen({ navigation }) {
             loadPlans();
         }, [user]),
     );
+
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = subscribeToTotalUnreadCount(user.id, "coach", (count) => {
+            setUnreadCount(count);
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     const handleDeletePlan = (planId) => {
         Alert.alert(
@@ -157,13 +168,6 @@ export default function CoachDashboardScreen({ navigation }) {
                         >
                             <Text className="text-white font-bold text-sm">Assign</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            className="bg-primary px-3 py-1.5 rounded-full shadow-sm"
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate("CoachMessages")}
-                        >
-                            <Text className="text-white font-bold text-sm">Messages</Text>
-                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -190,6 +194,57 @@ export default function CoachDashboardScreen({ navigation }) {
                     />
                 )}
             </View>
+
+            {/* Floating Message Button */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate("CoachMessages")}
+            >
+                <Ionicons name="chatbubbles" size={28} color="white" />
+                {unreadCount > 0 && (
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    backgroundColor: "#3B82F6",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  badge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+});

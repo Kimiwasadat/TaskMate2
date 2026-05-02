@@ -14,6 +14,7 @@ import {
   arrayRemove,
   onSnapshot,
   orderBy,
+  increment,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -451,22 +452,70 @@ export const sendMessage = async (coachId, clientId, senderId, text, taskContext
       text,
       taskContext, // Optional context like "Task: Clean Kitchen, Step 3"
       createdAt: serverTimestamp(),
+      isRead: false,
     };
     await addDoc(messagesRef, newMessage);
 
+    const isCoach = senderId === coachId;
+    
     // Also update a "lastMessage" field on the chat document itself for the list view
     const chatDocRef = doc(db, "chats", chatId);
-    await setDoc(chatDocRef, {
+    const payload = {
       coachId,
       clientId,
       lastMessageText: text,
       lastMessageAt: serverTimestamp(),
-    }, { merge: true });
+    };
+    
+    // Increment the appropriate unread counter based on who sent it
+    if (isCoach) {
+      payload.unreadByClient = increment(1);
+    } else {
+      payload.unreadByCoach = increment(1);
+    }
+    
+    await setDoc(chatDocRef, payload, { merge: true });
 
   } catch (error) {
     console.error("Error sending message:", error);
     throw error;
   }
+};
+
+export const markChatAsRead = async (coachId, clientId, userId) => {
+  try {
+    const chatId = `${coachId}_${clientId}`;
+    const chatDocRef = doc(db, "chats", chatId);
+    const isCoach = userId === coachId;
+    
+    const payload = {};
+    if (isCoach) {
+      payload.unreadByCoach = 0;
+    } else {
+      payload.unreadByClient = 0;
+    }
+    
+    // Set with merge to safely update or create if doesn't exist
+    await setDoc(chatDocRef, payload, { merge: true });
+  } catch (error) {
+    console.error("Error marking chat read:", error);
+  }
+};
+
+export const subscribeToTotalUnreadCount = (userId, role, callback) => {
+  const isCoach = role === "coach";
+  const fieldToMatch = isCoach ? "coachId" : "clientId";
+  const fieldToSum = isCoach ? "unreadByCoach" : "unreadByClient";
+
+  const q = query(collection(db, "chats"), where(fieldToMatch, "==", userId));
+  return onSnapshot(q, (snapshot) => {
+    let total = 0;
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      total += (data[fieldToSum] || 0);
+    });
+    callback(total);
+  });
 };
 
 export const subscribeToMessages = (coachId, clientId, callback) => {

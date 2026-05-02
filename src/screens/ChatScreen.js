@@ -13,7 +13,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "@clerk/clerk-expo";
-import { subscribeToMessages, sendMessage } from "../services/firestoreService";
+import { subscribeToMessages, sendMessage, getUserPushToken, markChatAsRead } from "../services/firestoreService";
+import { sendPushNotification } from "../services/notificationService";
 import { ROLES, normalizeRole } from "../auth/rbac";
 
 export default function ChatScreen({ route, navigation }) {
@@ -35,6 +36,9 @@ export default function ChatScreen({ route, navigation }) {
     const unsubscribe = subscribeToMessages(coachId, clientId, (fetchedMessages) => {
       setMessages(fetchedMessages);
       setLoading(false);
+      
+      // Mark as read whenever new messages load
+      markChatAsRead(coachId, clientId, user.id);
     });
 
     return () => unsubscribe();
@@ -48,6 +52,23 @@ export default function ChatScreen({ route, navigation }) {
 
     try {
       await sendMessage(coachId, clientId, user.id, textToSend, taskContext);
+      
+      try {
+        const recipientId = user.id === coachId ? clientId : coachId;
+        const recipientToken = await getUserPushToken(recipientId);
+        
+        if (recipientToken) {
+          const senderName = user?.firstName || "Someone";
+          await sendPushNotification(
+            recipientToken,
+            `New message from ${senderName}`,
+            textToSend
+          );
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify recipient:", notifErr);
+      }
+      
     } catch (error) {
       console.error("Failed to send message:", error);
       alert("Failed to send message. Please try again.");

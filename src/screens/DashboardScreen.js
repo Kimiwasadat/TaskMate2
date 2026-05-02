@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser, useAuth } from "@clerk/clerk-expo";
-import { getAssignmentsForClient } from "../services/firestoreService";
+import { getAssignmentsForClient, subscribeToTotalUnreadCount } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 import DashboardHeader from "../components/DashboardHeader";
 import { NetworkContext } from "../context/NetworkContext";
@@ -22,7 +22,16 @@ export default function DashboardScreen({ navigation }) {
   const { signOut } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { isOffline } = useContext(NetworkContext);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToTotalUnreadCount(user.id, "client", (count) => {
+      setUnreadCount(count);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -199,6 +208,11 @@ export default function DashboardScreen({ navigation }) {
           }
         >
           <Ionicons name="chatbubbles" size={28} color="white" />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -221,5 +235,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 8,
+  },
+  badge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

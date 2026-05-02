@@ -13,7 +13,9 @@ import {
   getPlansByCoach,
   getAssignedEmployeesForCoach,
   createAssignment,
+  getUserPushToken,
 } from "../services/firestoreService";
+import { sendPushNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
 
 export default function AssignPlanScreen({ navigation }) {
@@ -62,6 +64,25 @@ export default function AssignPlanScreen({ navigation }) {
     setAssigning(true);
     try {
       await createAssignment(selectedEmployeeId, selectedPlanId, user.id);
+      
+      // Notify the employee
+      try {
+        const empToken = await getUserPushToken(selectedEmployeeId);
+        if (empToken) {
+          const coachName = user?.firstName || "Your coach";
+          const selectedPlan = plans.find(p => p.id === selectedPlanId);
+          const planName = selectedPlan?.title || "a new task";
+          
+          await sendPushNotification(
+            empToken,
+            "New Task Assigned! 📋",
+            `${coachName} has assigned '${planName}' to you.`
+          );
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify employee:", notifErr);
+      }
+
       Alert.alert("Success!", "The Plan has been assigned to the Employee.");
       navigation.goBack(); // Return to dashboard
     } catch (error) {
