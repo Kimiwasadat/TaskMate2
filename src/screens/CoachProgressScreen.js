@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/clerk-expo";
-import { subscribeToCoachAssignments } from "../services/firestoreService";
+import { subscribeToCoachAssignments, deleteAssignment } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 
 export default function CoachProgressScreen({ navigation }) {
@@ -20,6 +20,30 @@ export default function CoachProgressScreen({ navigation }) {
 
   const toggleCardExpansion = (id) => {
     setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleUnassign = (assignmentId) => {
+    Alert.alert(
+      "Unassign Plan",
+      "Are you sure you want to unassign this plan from the messenger? Their progress will be lost.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Unassign", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteAssignment(assignmentId);
+              // Loading resets in subscription
+            } catch (error) {
+              Alert.alert("Error", "Could not unassign plan.");
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   useEffect(() => {
@@ -81,10 +105,15 @@ export default function CoachProgressScreen({ navigation }) {
               {plan.title || "Untitled Plan"}
             </Text>
           </View>
-          <View className={`${statusColor} px-3 py-1.5 rounded-[14px]`}>
-            <Text className={`${statusTextColor} font-bold text-xs`}>
-              {statusText}
-            </Text>
+          <View className="items-end gap-2">
+            <View className={`${statusColor} px-3 py-1.5 rounded-[14px]`}>
+              <Text className={`${statusTextColor} font-bold text-xs`}>
+                {statusText}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => handleUnassign(item.id)} className="bg-danger/10 px-3 py-1.5 rounded-[14px]">
+              <Text className="text-danger font-bold text-xs">Unassign</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

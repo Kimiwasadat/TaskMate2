@@ -6,6 +6,7 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   serverTimestamp,
@@ -207,6 +208,23 @@ export const updatePlanSteps = async (planId, stepsArray) => {
   }
 };
 
+export const deletePlan = async (planId) => {
+  try {
+    // 1. Delete the plan doc
+    const planRef = doc(db, "plans", planId);
+    await deleteDoc(planRef);
+
+    // 2. Query and delete all associated assignments
+    const q = query(collection(db, "assignments"), where("planId", "==", planId));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, "assignments", docSnap.id)));
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    throw error;
+  }
+};
+
 // --- ASSIGNMENT OPERATIONS (EMPLOYEES/CLIENTS) ---
 export const createAssignment = async (clientId, planId, coachId) => {
   try {
@@ -283,6 +301,16 @@ export const toggleAssignmentHelp = async (assignmentId, needsHelp) => {
     await updateDoc(assignmentRef, { needsHelp });
   } catch (error) {
     console.error("Error toggling assignment help:", error);
+    throw error;
+  }
+};
+
+export const deleteAssignment = async (assignmentId) => {
+  try {
+    const assignmentRef = doc(db, "assignments", assignmentId);
+    await deleteDoc(assignmentRef);
+  } catch (error) {
+    console.error("Error deleting assignment:", error);
     throw error;
   }
 };

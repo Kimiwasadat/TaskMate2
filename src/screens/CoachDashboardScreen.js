@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useFocusEffect } from "@react-navigation/native";
-import { getPlansByCoach } from "../services/firestoreService";
+import { getPlansByCoach, deletePlan } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 import DashboardHeader from "../components/DashboardHeader";
 
@@ -41,6 +41,30 @@ export default function CoachDashboardScreen({ navigation }) {
         }, [user]),
     );
 
+    const handleDeletePlan = (planId) => {
+        Alert.alert(
+            "Delete Plan",
+            "Are you sure you want to delete this plan? This will also unassign it from any messengers.",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            await deletePlan(planId);
+                            await loadPlans();
+                        } catch (error) {
+                            Alert.alert("Error", "Could not delete plan.");
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const renderPlanCard = ({ item }) => (
         <TouchableOpacity
             className="bg-surface p-5 rounded-2xl mb-4 border border-border shadow-sm"
@@ -52,9 +76,14 @@ export default function CoachDashboardScreen({ navigation }) {
                 })
             }
         >
-            <Text className="text-xl font-bold text-text-primary mb-2">
-                {item.title}
-            </Text>
+            <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-xl font-bold text-text-primary flex-1 mr-2">
+                    {item.title}
+                </Text>
+                <TouchableOpacity onPress={() => handleDeletePlan(item.id)} className="p-2 bg-danger/10 rounded-full">
+                    <Text className="text-lg">🗑️</Text>
+                </TouchableOpacity>
+            </View>
             <Text className="text-base text-text-muted mb-4 mt-1" numberOfLines={2}>
                 {item.description}
             </Text>

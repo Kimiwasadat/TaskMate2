@@ -12,6 +12,7 @@ import { CLERK_PUBLISHABLE_KEY } from "./src/config/clerk-config";
 import tokenCache from "./src/utils/cache";
 import IntroGate from "./src/components/IntroGate";
 import "./global.css";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const AuthStackBase = createNativeStackNavigator();
 
@@ -58,12 +59,14 @@ function AuthStack() {
 
 export default function App() {
   return (
-    <ClerkProvider
-      publishableKey={CLERK_PUBLISHABLE_KEY}
-      tokenCache={tokenCache}
-    >
-      <AppContent />
-    </ClerkProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ClerkProvider
+        publishableKey={CLERK_PUBLISHABLE_KEY}
+        tokenCache={tokenCache}
+      >
+        <AppContent />
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }
 

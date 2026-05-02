@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { getPlanById } from "../services/firestoreService";
+import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
+import { getPlanById, updatePlanSteps } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
 
 export default function PlanDetailScreen({ route, navigation }) {
@@ -36,35 +36,61 @@ export default function PlanDetailScreen({ route, navigation }) {
     }, [planId]),
   );
 
-  const renderStepCard = ({ item, index }) => (
-    <View className="bg-surface border border-border shadow-sm p-4 rounded-2xl mb-3 flex-row items-center">
-      <View className="bg-primary/20 w-10 h-10 rounded-full items-center justify-center mr-4">
-        <Text className="text-primary-dark font-bold text-lg">{index + 1}</Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-lg font-bold text-text-primary">{item.title}</Text>
-        {item.instruction ? (
-          <Text className="text-text-muted mt-1" numberOfLines={2}>
-            {item.instruction}
-          </Text>
-        ) : null}
-      </View>
-      <TouchableOpacity
-        className="p-3"
-        activeOpacity={0.7}
-        onPress={() =>
-          navigation.navigate("AddEditStep", {
-            planId,
-            step: item,
-            stepIndex: index,
-            currentSteps: plan.steps,
-          })
-        }
-      >
-        <Text className="text-primary font-bold text-base">Edit</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const handleDragEnd = async ({ data }) => {
+    setPlan(prev => ({ ...prev, steps: data }));
+    try {
+      await updatePlanSteps(planId, data);
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Could not save the new order.");
+      loadPlanDetails();
+    }
+  };
+
+  const renderStepCard = ({ item, getIndex, drag, isActive }) => {
+    const index = getIndex();
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
+          activeOpacity={0.9}
+          className={`bg-surface border shadow-sm p-4 rounded-2xl mb-3 flex-row items-center ${isActive ? 'border-primary bg-primary/5' : 'border-border'}`}
+        >
+          <View className="bg-primary/20 w-10 h-10 rounded-full items-center justify-center mr-4">
+            <Text className="text-primary-dark font-bold text-lg">{index + 1}</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-text-primary">{item.title}</Text>
+            {item.instruction ? (
+              <Text className="text-text-muted mt-1" numberOfLines={2}>
+                {item.instruction}
+              </Text>
+            ) : null}
+          </View>
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              className="p-3"
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation.navigate("AddEditStep", {
+                  planId,
+                  step: item,
+                  stepIndex: index,
+                  currentSteps: plan.steps,
+                })
+              }
+            >
+              <Text className="text-primary font-bold text-base">Edit</Text>
+            </TouchableOpacity>
+            <View className="p-3 opacity-30 cursor-move">
+              <Text className="text-xl">☰</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -120,23 +146,26 @@ export default function PlanDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={plan.steps || []}
-            keyExtractor={(item, index) => item.id || index.toString()}
-            renderItem={renderStepCard}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            ListEmptyComponent={() => (
-              <View className="py-12 items-center justify-center border-2 border-dashed border-border rounded-3xl mt-4">
-                <Text className="text-text-muted text-lg font-bold mb-1">
-                  No steps yet
-                </Text>
-                <Text className="text-text-muted text-center px-8">
-                  Add steps to guide your employees through this plan.
-                </Text>
-              </View>
-            )}
-          />
+          <View className="flex-1">
+            <DraggableFlatList
+              data={plan.steps || []}
+              onDragEnd={handleDragEnd}
+              keyExtractor={(item, index) => item.id || index.toString()}
+              renderItem={renderStepCard}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              ListEmptyComponent={() => (
+                <View className="py-12 items-center justify-center border-2 border-dashed border-border rounded-3xl mt-4">
+                  <Text className="text-text-muted text-lg font-bold mb-1">
+                    No steps yet
+                  </Text>
+                  <Text className="text-text-muted text-center px-8">
+                    Add steps to guide your employees through this plan.
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
         </View>
       ) : (
         <View className="flex-1 justify-center items-center">
