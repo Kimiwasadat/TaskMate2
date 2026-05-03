@@ -4,11 +4,18 @@ import { Platform } from 'react-native';
 
 // Set exactly how notifications behave when the app is in the foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data;
+    const title = notification.request.content.title;
+    const isReminder = title?.includes("Stay on Track") || title?.includes("Overtime Alert!") || title?.includes("Time's Up!");
+
+    if (isReminder && !data?.isRescheduled) {
+      // Suppress the original scheduled reminder so we can sync it with TTS visually
+      return { shouldShowAlert: false, shouldPlaySound: false, shouldSetBadge: false };
+    }
+    
+    return { shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false };
+  },
 });
 
 /**
@@ -99,6 +106,25 @@ export async function cancelReminder(notificationId) {
 }
 
 /**
+ * Schedules an immediate local reminder when time is up
+ * @param {string} taskName 
+ */
+export async function scheduleTimeUpNotification(taskName) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Time's Up! ⏰",
+        body: `Time is up for "${taskName}". Please make sure you completed the task!`,
+        sound: true,
+      },
+      trigger: null, // null means trigger immediately
+    });
+  } catch (error) {
+    console.error("Error scheduling time's up reminder:", error);
+  }
+}
+
+/**
  * Sends a push notification to another user's device via Expo servers
  * @param {string} expoPushToken 
  * @param {string} title 
@@ -129,3 +155,42 @@ export async function sendPushNotification(expoPushToken, title, body) {
     console.error("Error sending push to Expo:", error);
   }
 }
+
+/**
+ * Schedules a repeating local reminder on the device for overtime
+ * @param {string} taskName 
+ * @param {number} intervalSeconds (Defaults to 60 seconds)
+ * @returns {string} notificationId
+ */
+export async function scheduleRepeatingReminder(taskName, intervalSeconds = 60) {
+  try {
+    const identifier = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Overtime Alert! ⏰",
+        body: `You are over time on "${taskName}". Please stay on task!`,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: intervalSeconds,
+        repeats: true,
+      },
+    });
+    return identifier;
+  } catch (error) {
+    console.error("Error scheduling repeating reminder:", error);
+    return null;
+  }
+}
+
+/**
+ * Cancels all scheduled local notifications (useful on unmount to prevent zombie reminders)
+ */
+export async function cancelAllReminders() {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (error) {
+    console.error("Error canceling all reminders:", error);
+  }
+}
+

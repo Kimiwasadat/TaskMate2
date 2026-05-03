@@ -245,6 +245,20 @@ export const createAssignment = async (clientId, planId, coachId) => {
     throw error;
   }
 };
+
+export const getAssignmentById = async (assignmentId) => {
+  try {
+    const docRef = doc(db, "assignments", assignmentId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching assignment:", error);
+    return null;
+  }
+};
 export const getAssignmentsForClient = async (clientId) => {
   try {
     const q = query(
