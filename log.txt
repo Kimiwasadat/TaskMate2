@@ -1,0 +1,59 @@
+commit 1c23b03656c6c898137b444d73695dd56334ea5e
+Author: Kimiwa Sadat <47575830+Kimiwasadat@users.noreply.github.com>
+Date:   Sat Mar 28 20:07:04 2026 -0400
+
+    UI Changes to app
+
+commit a2d916f36ee7c9764315be6d4a3c8f057ff65cf7
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 01:08:04 2026 -0400
+
+    fix: restore missing subscribeToCoachAssignments export causing coach dashboard crash
+
+commit d2ff8e57fbbb5b4c7db752e9cfd3df020e024d72
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 01:01:55 2026 -0400
+
+    fix: add missing useEffect import and streamline Ask Coach UX flow
+
+commit b535bd231ef5ab6a37aabb0fed346b290ec5fb0f
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 00:54:30 2026 -0400
+
+    fix: resolve push notification ui block, clear duplicate footer buttons, and implement real-time coach dashboard updates
+
+commit d1e7ba405c55863f247ff857b6db09c67362ecc1
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 00:46:27 2026 -0400
+
+    style: refactor task guidance layout into full scrollview to prevent overlap and crush
+
+commit 06e5af2cca10c9324bf697d9bdaf52b863f94025
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 00:37:02 2026 -0400
+
+    style: fix media overlap, tighten text margins, and prioritize primary action buttons
+
+commit 2c914ce154a2ddc28cb2273385eef673de7f6b17
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 00:30:00 2026 -0400
+
+    fix: resolve media overlap, add Ask Coach inline feedback banner, and progress bar step alert icon
+
+commit c706a8e2583af83d6d565aac35c120b2cebbfdb6
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Tue Mar 17 00:13:18 2026 -0400
+
+    feat: detailed progress dropdown and coach help alerts
+
+commit 97348af8ea776acc5b7fadf016618ce2d902e180
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Mon Mar 16 21:05:50 2026 -0400
+
+    feat: enable multiple media attachments per step for coaches and interactive swiping gallery for employees
+
+commit 9415e415b312dce356b1b5a9794c4149f1ed0276
+Author: aibrahi011 <aibrahi011@citymail.cuny.edu>
+Date:   Mon Mar 16 20:56:47 2026 -0400
+
+    feat: add expo-av video support to coach preview and employee tasks

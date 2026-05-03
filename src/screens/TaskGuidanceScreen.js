@@ -220,6 +220,8 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   useEffect(() => {
     if (plan?.steps?.[currentStepIndex]?.durationMinutes) {
       setStepTimeLeft(plan.steps[currentStepIndex].durationMinutes * 60);
+    } else {
+      setStepTimeLeft(0);
     }
   }, [plan, currentStepIndex]);
 
@@ -311,6 +313,12 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         await cancelReminder(activeReminderRef.current);
         activeReminderRef.current = null;
       }
+      if (overtimeReminderRef.current) {
+        await cancelReminder(overtimeReminderRef.current);
+        overtimeReminderRef.current = null;
+      }
+      setIsOvertime(false);
+      
       if (plan && currentStep) {
         const durationMins = currentStep.durationMinutes;
         
@@ -333,6 +341,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       if (activeReminderRef.current) {
         cancelReminder(activeReminderRef.current);
         activeReminderRef.current = null;
+      }
+      if (overtimeReminderRef.current) {
+        cancelReminder(overtimeReminderRef.current);
+        overtimeReminderRef.current = null;
       }
     };
   }, [currentStepIndex, plan]);
