@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   useWindowDimensions,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
@@ -15,12 +16,13 @@ import { generateAndPlayAudio } from "../services/ttsService";
 import { getTaskHelp, getTaskHelpWithAudio, getProactiveSocialScript } from "../services/aiService";
 import {
   getPlanById,
+  getAssignmentById,
   updateAssignmentStatus,
   updateAssignmentProgress, // Added
   toggleAssignmentHelp, // Added
   getUserPushToken,
 } from "../services/firestoreService";
-import { scheduleIdleReminder, cancelReminder, sendPushNotification, scheduleRepeatingReminder } from "../services/notificationService";
+import { scheduleIdleReminder, cancelReminder, scheduleRepeatingReminder, sendPushNotification, cancelAllReminders, scheduleTimeUpNotification } from "../services/notificationService";
 import LoadingLogo from "../components/LoadingLogo";
 import { Video, Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
@@ -60,18 +62,113 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   const recordingTimeoutRef = useRef(null);
   const isMounted = useRef(true);
 
+  useEffect(() => {
+    global.isAppSpeaking = isSpeaking;
+  }, [isSpeaking]);
+
   // Reminders
   const activeReminderRef = useRef(null);
   const overtimeReminderRef = useRef(null);
   const [isOvertime, setIsOvertime] = useState(false);
-  const prevStepTimeLeftRef = useRef(-1);
 
+  // Audio Queue
+  const audioQueueRef = useRef([]);
+  const isProcessingQueueRef = useRef(false);
+
+  // Timer Animation
+  const timerAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      cancelAllReminders();
     };
   }, []);
+
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let anim;
+    if (stepTimeLeft > 0 && stepTimeLeft <= 5 && Number(currentStep?.durationMinutes) > 0) {
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(blinkAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          Animated.delay(250),
+          Animated.timing(blinkAnim, { toValue: 1, duration: 0, useNativeDriver: true }),
+          Animated.delay(250)
+        ])
+      );
+      anim.start();
+    } else {
+      blinkAnim.setValue(1);
+    }
+    return () => { if (anim) anim.stop(); };
+  }, [stepTimeLeft, currentStep]);
+
+  const colorClass = (stepTimeLeft <= 10 && Number(currentStep?.durationMinutes) > 0)
+    ? "text-danger" // Solid Red
+    : (stepTimeLeft <= 20 && Number(currentStep?.durationMinutes) > 0) 
+      ? "text-yellow-500" // Yellow
+      : "text-blue-500"; // Blue
+
+  const processAudioQueue = async () => {
+    if (isProcessingQueueRef.current || audioQueueRef.current.length === 0 || !isMounted.current) return;
+    
+    isProcessingQueueRef.current = true;
+    setIsSpeaking(true);
+    
+    const item = audioQueueRef.current.shift();
+    const textToSpeak = typeof item === 'string' ? item : item.text;
+    
+    if (item.isReminder) {
+      Notifications.scheduleNotificationAsync({
+         content: {
+           title: item.title,
+           body: textToSpeak,
+           sound: true,
+           data: { isRescheduled: true }
+         },
+         trigger: null
+      }).catch(console.error);
+    }
+
+    try {
+      const sound = await generateAndPlayAudio(textToSpeak);
+      if (sound && isMounted.current) {
+        setCurrentSound(sound);
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            if (isMounted.current) {
+              sound.unloadAsync().catch(() => {});
+              setCurrentSound(null);
+              setIsSpeaking(false);
+              isProcessingQueueRef.current = false;
+              if (audioQueueRef.current.length > 0) {
+                setTimeout(() => { if (isMounted.current) processAudioQueue(); }, 200);
+              }
+            }
+          }
+        });
+      } else {
+        if (isMounted.current) setIsSpeaking(false);
+        if (sound) sound.unloadAsync().catch(() => {});
+        isProcessingQueueRef.current = false;
+        processAudioQueue();
+      }
+    } catch (error) {
+      if (isMounted.current) setIsSpeaking(false);
+      console.error("Audio generation failed:", error);
+      isProcessingQueueRef.current = false;
+      processAudioQueue();
+    }
+  };
+
+  const enqueueAudio = (textToSpeak) => {
+    audioQueueRef.current.push(textToSpeak);
+    if (!isProcessingQueueRef.current) {
+      processAudioQueue();
+    }
+  };
 
   const { isOffline } = useContext(NetworkContext);
   const { height } = useWindowDimensions();
@@ -92,6 +189,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           const data = await getPlanById(planId);
           if (data) {
             setPlan(data);
+            const assignmentData = await getAssignmentById(assignmentId);
+            if (assignmentData && assignmentData.currentStepIndex) {
+              setCurrentStepIndex(assignmentData.currentStepIndex);
+            }
           } else {
             console.log("Plan not found");
           }
@@ -125,27 +226,26 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   }, [plan, currentStepIndex]);
 
   useEffect(() => {
-    // Check for overtime transition
-    if (prevStepTimeLeftRef.current > 0 && stepTimeLeft === 0 && !isOvertime) {
-      const durationMins = plan?.steps?.[currentStepIndex]?.durationMinutes;
-      if (durationMins && durationMins > 0) {
-        setIsOvertime(true);
-        scheduleRepeatingReminder(currentStep?.instruction || plan?.title || "this task", 60).then(id => {
-          overtimeReminderRef.current = id;
-        });
-      }
-    }
-    prevStepTimeLeftRef.current = stepTimeLeft;
-
-    if (timeLeft <= 0 && stepTimeLeft <= 0) return;
+    if (timeLeft <= 0 && stepTimeLeft <= 0 && !(Number(currentStep?.durationMinutes) > 0)) return;
 
     const timerId = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-      setStepTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setStepTimeLeft((prev) => {
+        if (prev === 1 && Number(currentStep?.durationMinutes) > 0) {
+          scheduleTimeUpNotification(currentStep.instruction || "Task");
+        }
+        if (prev <= 1 && Number(currentStep?.durationMinutes) > 0 && !isOvertime) {
+          setIsOvertime(true);
+          scheduleRepeatingReminder(currentStep.instruction || "Task", 60).then(id => {
+            overtimeReminderRef.current = id;
+          });
+        }
+        return prev > 0 ? prev - 1 : 0;
+      });
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [timeLeft, stepTimeLeft, currentStepIndex, plan, currentStep, isOvertime]);
+  }, [timeLeft, stepTimeLeft, currentStep, isOvertime]);
 
   useEffect(() => {
     return () => {
@@ -192,27 +292,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           if (isMounted.current) setCurrentSound(null);
         }
 
-        if (isMounted.current) setIsSpeaking(true);
         const script = await getProactiveSocialScript(plan, currentStepIndex);
         if (script && active && isMounted.current) {
-          const sound = await generateAndPlayAudio(script);
-          if (sound && active && isMounted.current) {
-            setCurrentSound(sound);
-            sound.setOnPlaybackStatusUpdate((status) => {
-              if (status.didJustFinish) {
-                if (isMounted.current) {
-                  setIsSpeaking(false);
-                  sound.unloadAsync().catch(() => {});
-                  setCurrentSound(null);
-                }
-              }
-            });
-          } else {
-            if (isMounted.current) setIsSpeaking(false);
-            if (sound) sound.unloadAsync().catch(() => {});
-          }
-        } else {
-          if (isMounted.current) setIsSpeaking(false);
+          enqueueAudio(script);
         }
       }, 500);
     };
@@ -270,36 +352,19 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // Listen for the notification to fire, and read it aloud using the natural voice
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
+      const data = notification.request.content.data;
+      if (data?.isRescheduled) return;
+
+      const title = notification.request.content.title;
       // If the notification TITLE contains our Stay on Track identifier
-      if (notification.request.content.title?.includes("Stay on Track")) {
+      if (title?.includes("Stay on Track") || title?.includes("Overtime Alert!") || title?.includes("Time's Up!")) {
         const textToSpeak = notification.request.content.body;
-        
-        // Stop any current audio
-        if (isSpeaking && currentSound) {
-          await currentSound.unloadAsync();
-          setCurrentSound(null);
-        }
-        
-        // Generate and play the natural voice
-        setIsSpeaking(true);
-        try {
-          const sound = await generateAndPlayAudio(textToSpeak);
-          if (sound) {
-            setCurrentSound(sound);
-            sound.setOnPlaybackStatusUpdate((status) => {
-              if (status.didJustFinish) {
-                setIsSpeaking(false);
-                sound.unloadAsync();
-                setCurrentSound(null);
-              }
-            });
-          } else {
-            setIsSpeaking(false);
-          }
-        } catch (error) {
-          setIsSpeaking(false);
-          console.error("Audio generation failed for reminder:", error);
-        }
+        // Add the reminder text to the queue to play next without stopping the current one
+        enqueueAudio({
+          text: textToSpeak,
+          title: title,
+          isReminder: true
+        });
       }
     });
 
@@ -308,41 +373,22 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         subscription.remove();
       }
     };
-  }, [currentSound, isSpeaking]);
+  }, []);
 
   const speakText = async () => {
     const textToSpeak = currentStep?.ttsText || currentStep?.instruction;
     if (!textToSpeak) return;
 
-    if (isSpeaking) {
+    if (isSpeaking || isProcessingQueueRef.current) {
       if (currentSound) {
         await currentSound.unloadAsync();
         setCurrentSound(null);
       }
       setIsSpeaking(false);
+      isProcessingQueueRef.current = false;
+      audioQueueRef.current = [];
     } else {
-      setIsSpeaking(true);
-      try {
-        const sound = await generateAndPlayAudio(textToSpeak);
-        if (sound && isMounted.current) {
-          setCurrentSound(sound);
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.didJustFinish) {
-              if (isMounted.current) {
-                setIsSpeaking(false);
-                sound.unloadAsync().catch(() => {});
-                setCurrentSound(null);
-              }
-            }
-          });
-        } else {
-          if (isMounted.current) setIsSpeaking(false);
-          if (sound) sound.unloadAsync().catch(() => {});
-        }
-      } catch (error) {
-        if (isMounted.current) setIsSpeaking(false);
-        console.error("Audio generation failed:", error);
-      }
+      enqueueAudio(textToSpeak);
     }
   };
 
@@ -410,11 +456,15 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       // Gemini needs standard audio format headers
       const mimeType = "audio/m4a"; 
 
-      // Stop any current visual/audio reading
-      if (isSpeaking && currentSound) {
-         await currentSound.unloadAsync();
-         setCurrentSound(null);
+      // Stop any current visual/audio reading and clear queue
+      if (isSpeaking || isProcessingQueueRef.current) {
+         if (currentSound) {
+           await currentSound.unloadAsync();
+           setCurrentSound(null);
+         }
          setIsSpeaking(false);
+         isProcessingQueueRef.current = false;
+         audioQueueRef.current = [];
       }
 
       // Send to Gemini 2.5 Flash via AI Service
@@ -423,24 +473,8 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       if (!isMounted.current) return;
       setAiMessage(helpMsg);
 
-      // Play the AI tip in a natural voice instantly
-      setIsSpeaking(true);
-      const sound = await generateAndPlayAudio(helpMsg);
-      if (sound && isMounted.current) {
-        setCurrentSound(sound);
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish) {
-            if (isMounted.current) {
-              setIsSpeaking(false);
-              sound.unloadAsync().catch(() => {});
-              setCurrentSound(null);
-            }
-          }
-        });
-      } else {
-        if (isMounted.current) setIsSpeaking(false);
-        if (sound) sound.unloadAsync().catch(() => {});
-      }
+      // Play the AI tip in a natural voice instantly by enqueueing it
+      enqueueAudio(helpMsg);
 
     } catch (err) {
       console.error("Failed to process recording", err);
@@ -473,6 +507,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
 
   // Keep assignment progress synced when step changes
   useEffect(() => {
+    if (loading || !assignmentId) return;
     if (assignmentId) {
       if (isOffline) {
         queueOfflineAction({
@@ -486,7 +521,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
         );
       }
     }
-  }, [currentStepIndex, assignmentId, isOffline]);
+  }, [currentStepIndex, assignmentId, isOffline, loading]);
 
   const handleNextStep = async () => {
     if (currentSound) {
@@ -494,9 +529,16 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       setCurrentSound(null);
     }
     setIsSpeaking(false);
+    isProcessingQueueRef.current = false;
+    audioQueueRef.current = [];
     setAiResponse(null);
     setAiMessage(null); // Clear AI Helper message
     setCoachNotified(false); // Clear coach notification banner
+    setIsOvertime(false);
+    if (overtimeReminderRef.current) {
+      cancelReminder(overtimeReminderRef.current);
+      overtimeReminderRef.current = null;
+    }
 
     try {
       if (assignmentId) {
@@ -653,10 +695,10 @@ export default function TaskGuidanceScreen({ route, navigation }) {
                 Total: {formatTime(timeLeft)}
               </Text>
             )}
-            {stepTimeLeft > 0 && (
-              <Text className="text-sm font-bold text-primary">
+            {currentStep?.durationMinutes > 0 && (
+              <Animated.Text style={{ opacity: blinkAnim }} className={`text-sm font-bold ${colorClass}`}>
                 ⏱ {formatTime(stepTimeLeft)}
-              </Text>
+              </Animated.Text>
             )}
           </View>
         </View>
