@@ -8,6 +8,7 @@ import {
   Image,
   useWindowDimensions,
   Animated,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
@@ -29,6 +30,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { NetworkContext } from "../context/NetworkContext";
 import NetworkStatusBanner from "../components/NetworkStatusBanner";
 import { queueOfflineAction, updateOfflineAssignment, getOfflineAssignments } from "../services/offlineStorageService";
+import { Ionicons } from "@expo/vector-icons";
 
 const isVideo = (url) => {
   if (!url) return false;
@@ -779,9 +781,20 @@ export default function TaskGuidanceScreen({ route, navigation }) {
           </View>
 
         {/* Text Instruction - Large & Clear */}
-        <Text className="text-3xl font-bold text-text-primary text-center leading-tight mb-8">
-          {currentStep?.instruction}
-        </Text>
+        <View className="flex-row items-center justify-center mb-8 px-4">
+          <Text className="text-3xl font-bold text-text-primary text-center leading-tight flex-shrink">
+            {currentStep?.instruction}
+          </Text>
+          {currentStep?.locationUrl ? (
+            <TouchableOpacity 
+              className="ml-3 bg-primary/10 p-3 rounded-full shadow-sm"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL(currentStep.locationUrl).catch(err => console.error("Couldn't load location", err))}
+            >
+              <Ionicons name="map" size={32} color="#14B8B8" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* AI Response Box (Original) */}
         {aiLoading && (

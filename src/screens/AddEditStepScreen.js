@@ -27,6 +27,7 @@ export default function AddEditStepScreen({ route, navigation }) {
 
   const [title, setTitle] = useState(step?.title || "");
   const [instruction, setInstruction] = useState(step?.instruction || "");
+  const [locationUrl, setLocationUrl] = useState(step?.locationUrl || "");
   const [durationMinutes, setDurationMinutes] = useState(
     step?.durationMinutes?.toString() || "",
   );
@@ -172,6 +173,7 @@ export default function AddEditStepScreen({ route, navigation }) {
         isCompleted: false,
         mediaUrls: finalMediaUrls,
         socialCue: stepSocialCue,
+        locationUrl: locationUrl.trim() || null,
       };
 
       const updatedSteps = [...currentSteps];
@@ -268,6 +270,22 @@ export default function AddEditStepScreen({ route, navigation }) {
               placeholder="e.g. Travel to Headquarters"
               className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary shadow-sm"
               placeholderTextColor="#5B667A"
+            />
+          </View>
+
+          <View className="mb-6">
+            <Text className="text-text-primary font-bold text-sm mb-2 mt-2">
+              Location Link (Optional)
+            </Text>
+            <TextInput
+              value={locationUrl}
+              onChangeText={setLocationUrl}
+              placeholder="e.g. https://maps.app.goo.gl/..."
+              className="bg-surface border border-border p-4 rounded-xl text-base text-text-primary shadow-sm"
+              placeholderTextColor="#5B667A"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
             />
           </View>
 

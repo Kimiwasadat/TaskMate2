@@ -11,6 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
 import { getPlanById, updatePlanSteps } from "../services/firestoreService";
 import LoadingLogo from "../components/LoadingLogo";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function PlanDetailScreen({ route, navigation }) {
   const { planId, planTitle } = route.params;
@@ -61,7 +62,12 @@ export default function PlanDetailScreen({ route, navigation }) {
             <Text className="text-primary-dark font-bold text-lg">{index + 1}</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-bold text-text-primary">{item.title}</Text>
+            <View className="flex-row items-center">
+              <Text className="text-lg font-bold text-text-primary mr-2">{item.title}</Text>
+              {item.locationUrl ? (
+                <Ionicons name="map" size={16} color="#14B8B8" />
+              ) : null}
+            </View>
             {item.instruction ? (
               <Text className="text-text-muted mt-1" numberOfLines={2}>
                 {item.instruction}
