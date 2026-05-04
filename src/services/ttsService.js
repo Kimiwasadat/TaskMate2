@@ -43,10 +43,13 @@ export const generateAndPlayAudio = async (text) => {
             encoding: 'base64',
           });
 
-          // Ensure audio plays even if phone is on silent (for iOS)
+          // Ensure audio plays even if phone is on silent (for iOS) and always uses the speaker
           try {
             await Audio.setAudioModeAsync({
               playsInSilentModeIOS: true,
+              allowsRecordingIOS: false,
+              staysActiveInBackground: false,
+              playThroughEarpieceAndroid: false,
             });
           } catch (e) {
             console.warn("Audio mode set failed safely", e);

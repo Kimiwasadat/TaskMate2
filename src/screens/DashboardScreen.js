@@ -195,14 +195,14 @@ export default function DashboardScreen({ navigation }) {
             contentContainerStyle={{ paddingBottom: 20 }}
             stickySectionHeadersEnabled={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#14B8B8" colors={["#14B8B8"]} />
             }
           />
         ) : (
           <ScrollView
             contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 }}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" colors={["#3B82F6"]} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#14B8B8" colors={["#14B8B8"]} />
             }
           >
             <Text className="text-4xl mb-4">📭</Text>
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 24,
     right: 24,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#14B8B8",
     width: 64,
     height: 64,
     borderRadius: 32,

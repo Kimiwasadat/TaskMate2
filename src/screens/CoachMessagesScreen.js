@@ -10,15 +10,27 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "@clerk/clerk-expo";
-import { getAssignedClientsForCoach } from "../services/firestoreService";
+import { getAssignedClientsForCoach, subscribeToCoachChats } from "../services/firestoreService";
 
 export default function CoachMessagesScreen({ navigation }) {
   const { user } = useUser();
   const [clients, setClients] = useState([]);
+  const [chats, setChats] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchClients();
+    
+    if (user) {
+      const unsubscribe = subscribeToCoachChats(user.id, (fetchedChats) => {
+        const chatsMap = {};
+        fetchedChats.forEach(chat => {
+          chatsMap[chat.clientId] = chat;
+        });
+        setChats(chatsMap);
+      });
+      return () => unsubscribe();
+    }
   }, [user]);
 
   const fetchClients = async () => {
@@ -38,6 +50,10 @@ export default function CoachMessagesScreen({ navigation }) {
     const displayName = item.username || item.firstName || "Messenger";
     const displayInitial = displayName[0]?.toUpperCase() || "?";
     
+    const chat = chats[item.id];
+    const unreadCount = chat?.unreadByCoach || 0;
+    const hasUnread = unreadCount > 0;
+    
     return (
       <TouchableOpacity
         style={styles.clientItem}
@@ -54,10 +70,18 @@ export default function CoachMessagesScreen({ navigation }) {
           </Text>
         </View>
         <View style={styles.clientInfo}>
-          <Text style={styles.clientName}>
-            {displayName} {item.lastName || ""}
+          <View style={styles.nameRow}>
+            <Text style={[styles.clientName, hasUnread && styles.boldText]} numberOfLines={1}>
+              {displayName} {item.lastName || ""}
+            </Text>
+            {hasUnread && <View style={styles.unreadDot} />}
+          </View>
+          <Text 
+            style={[styles.clientEmail, hasUnread && styles.boldMessageText]}
+            numberOfLines={1}
+          >
+            {chat?.lastMessageText || item.email || "No messages yet"}
           </Text>
-          {item.email ? <Text style={styles.clientEmail}>{item.email}</Text> : null}
         </View>
         <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
       </TouchableOpacity>
@@ -77,7 +101,7 @@ export default function CoachMessagesScreen({ navigation }) {
 
         {loading ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color="#14B8B8" />
           </View>
         ) : clients.length === 0 ? (
           <View style={styles.centerContainer}>
@@ -164,7 +188,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#DBEAFE",
+    backgroundColor: "#E0F2F2",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
@@ -172,19 +196,42 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#1D4ED8",
+    color: "#0E7C7C",
   },
   clientInfo: {
     flex: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    paddingRight: 8,
   },
   clientName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
-    marginBottom: 4,
+    flex: 1,
+  },
+  boldText: {
+    fontWeight: "800",
+    color: "#000",
+  },
+  boldMessageText: {
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#14B8B8",
+    marginLeft: 8,
   },
   clientEmail: {
     fontSize: 14,
     color: "#6B7280",
+    paddingRight: 8,
   },
 });

@@ -10,9 +10,26 @@ export default function LoginScreen({ onNavigateToSignUp }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
 
     const onSignInPress = async () => {
         if (!isLoaded) return;
+        
+        setErrorMsg("");
+
+        if (!username.trim() && !password.trim()) {
+            setErrorMsg("Please enter both username and password.");
+            return;
+        }
+        if (!username.trim()) {
+            setErrorMsg("Please enter your username.");
+            return;
+        }
+        if (!password.trim()) {
+            setErrorMsg("Please enter your password.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -25,7 +42,15 @@ export default function LoginScreen({ onNavigateToSignUp }) {
             await setActive({ session: completeSignIn.createdSessionId });
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
-            Alert.alert("Error", err.errors?.[0]?.message || "Something went wrong");
+            const msg = err.errors?.[0]?.message || "Something went wrong";
+            
+            if (msg.toLowerCase().includes("couldn't find your account") || msg.toLowerCase().includes("no user found")) {
+                setErrorMsg("No user found with this username.");
+            } else if (msg.toLowerCase().includes("password")) {
+                setErrorMsg("Incorrect password. Please try again.");
+            } else {
+                setErrorMsg(msg);
+            }
         } finally {
             setLoading(false);
         }
@@ -41,6 +66,12 @@ export default function LoginScreen({ onNavigateToSignUp }) {
                 </View>
 
                 <View className="space-y-4">
+                    {errorMsg ? (
+                        <View className="bg-red-500/90 border border-red-400 p-4 rounded-xl mb-2 flex-row items-center">
+                            <Text className="text-white font-bold text-sm">{errorMsg}</Text>
+                        </View>
+                    ) : null}
+
                     <View>
                         <Text className="text-sm font-bold text-white mb-2 ml-1">Username</Text>
                         <TextInput

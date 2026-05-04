@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useState, useEffect } from "react";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import * as Notifications from "expo-notifications";
 import { NetworkProvider } from "./src/context/NetworkContext";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, SignedIn, SignedOut, useAuth } from "@clerk/clerk-expo";
@@ -13,6 +14,8 @@ import tokenCache from "./src/utils/cache";
 import IntroGate from "./src/components/IntroGate";
 import "./global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+export const navigationRef = createNavigationContainerRef();
 
 const AuthStackBase = createNativeStackNavigator();
 
@@ -73,12 +76,27 @@ export default function App() {
 function AppContent() {
   const { isLoaded } = useAuth();
 
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'chat' && navigationRef.isReady()) {
+        navigationRef.navigate('Chat', {
+          coachId: data.coachId,
+          clientId: data.clientId,
+          taskContext: data.taskContext
+        });
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   if (!isLoaded) return null;
 
   return (
     <NetworkProvider>
       <IntroGate>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <StatusBar style="auto" />
           <SignedIn>
             <AppNavigator />
