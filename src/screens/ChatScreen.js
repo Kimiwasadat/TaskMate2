@@ -62,7 +62,8 @@ export default function ChatScreen({ route, navigation }) {
           await sendPushNotification(
             recipientToken,
             `New message from ${senderName}`,
-            textToSend
+            textToSend,
+            { type: 'chat', coachId, clientId, taskContext }
           );
         }
       } catch (notifErr) {
@@ -125,7 +126,7 @@ export default function ChatScreen({ route, navigation }) {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color="#14B8B8" />
           </View>
         ) : (
           <FlatList
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
   },
   messageWrapper: {
     flexDirection: "row",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   messageWrapperMe: {
     justifyContent: "flex-end",
@@ -207,16 +208,17 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
+    maxWidth: "75%",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
   },
   messageBubbleMe: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#14B8B8",
     borderBottomRightRadius: 4,
   },
   messageBubbleOther: {
-    backgroundColor: "white",
+    backgroundColor: "#E5E5EA",
     borderBottomLeftRadius: 4,
   },
   contextText: {
@@ -225,10 +227,10 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   contextTextMe: {
-    color: "#DBEAFE",
+    color: "#E0F2F1",
   },
   contextTextOther: {
-    color: "#6B7280",
+    color: "#8E8E93",
   },
   messageText: {
     fontSize: 16,
@@ -238,38 +240,40 @@ const styles = StyleSheet.create({
     color: "white",
   },
   messageTextOther: {
-    color: "#1F2937",
+    color: "black",
   },
   inputContainer: {
     flexDirection: "row",
-    padding: 12,
-    backgroundColor: "white",
+    padding: 10,
+    backgroundColor: "#F9FAFB",
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
     alignItems: "flex-end",
   },
   textInput: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "white",
+    borderColor: "#E5E5EA",
+    borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 16,
     maxHeight: 100,
-    color: "#1F2937",
+    color: "black",
   },
   sendButton: {
-    backgroundColor: "#3B82F6",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: "#14B8B8",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
-    marginBottom: 2, // Align with text input bottom
+    marginBottom: 4, 
   },
   sendButtonDisabled: {
-    backgroundColor: "#9CA3AF",
+    backgroundColor: "#D1D5DB",
   },
 });

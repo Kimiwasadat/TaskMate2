@@ -14,7 +14,7 @@ Notifications.setNotificationHandler({
       return { shouldShowAlert: false, shouldPlaySound: false, shouldSetBadge: false };
     }
     
-    return { shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false };
+    return { shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: true };
   },
 });
 
@@ -130,7 +130,7 @@ export async function scheduleTimeUpNotification(taskName) {
  * @param {string} title 
  * @param {string} body 
  */
-export async function sendPushNotification(expoPushToken, title, body) {
+export async function sendPushNotification(expoPushToken, title, body, data = {}) {
   if (!expoPushToken) return;
 
   const message = {
@@ -138,7 +138,7 @@ export async function sendPushNotification(expoPushToken, title, body) {
     sound: 'default',
     title: title,
     body: body,
-    data: { someData: 'goes here' },
+    data: data,
   };
 
   try {

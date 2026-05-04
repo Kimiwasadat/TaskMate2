@@ -74,6 +74,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
   // Audio Queue
   const audioQueueRef = useRef([]);
   const isProcessingQueueRef = useRef(false);
+  const queueVersionRef = useRef(0);
 
   // Timer Animation
   const timerAnim = useRef(new Animated.Value(0)).current;
@@ -132,9 +133,17 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       }).catch(console.error);
     }
 
+    const currentVersion = queueVersionRef.current;
+
     try {
       const sound = await generateAndPlayAudio(textToSpeak);
       if (sound && isMounted.current) {
+        if (currentVersion !== queueVersionRef.current) {
+          sound.unloadAsync().catch(() => {});
+          isProcessingQueueRef.current = false;
+          return;
+        }
+
         setCurrentSound(sound);
         sound.setOnPlaybackStatusUpdate((status) => {
           if (status.didJustFinish) {
@@ -375,6 +384,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       setIsSpeaking(false);
       isProcessingQueueRef.current = false;
       audioQueueRef.current = [];
+      queueVersionRef.current += 1;
     } else {
       enqueueAudio(textToSpeak);
     }
@@ -453,12 +463,14 @@ export default function TaskGuidanceScreen({ route, navigation }) {
          setIsSpeaking(false);
          isProcessingQueueRef.current = false;
          audioQueueRef.current = [];
+         queueVersionRef.current += 1;
       }
 
+      const stepIndexWhenStarted = currentStepIndex;
       // Send to Gemini 2.5 Flash via AI Service
       const helpMsg = await getTaskHelpWithAudio(plan, currentStepIndex, base64Audio, mimeType);
       
-      if (!isMounted.current) return;
+      if (!isMounted.current || stepIndexWhenStarted !== currentStepIndex) return;
       setAiMessage(helpMsg);
 
       // Play the AI tip in a natural voice instantly by enqueueing it
@@ -519,6 +531,7 @@ export default function TaskGuidanceScreen({ route, navigation }) {
     setIsSpeaking(false);
     isProcessingQueueRef.current = false;
     audioQueueRef.current = [];
+    queueVersionRef.current += 1;
     setAiResponse(null);
     setAiMessage(null); // Clear AI Helper message
     setCoachNotified(false); // Clear coach notification banner
@@ -589,6 +602,9 @@ export default function TaskGuidanceScreen({ route, navigation }) {
       setCurrentSound(null);
     }
     setIsSpeaking(false);
+    isProcessingQueueRef.current = false;
+    audioQueueRef.current = [];
+    queueVersionRef.current += 1;
     setAiResponse(null);
     setAiMessage(null); // Clear AI Helper message
     setCoachNotified(false); // Clear coach notification banner

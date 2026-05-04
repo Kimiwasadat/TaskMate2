@@ -548,6 +548,14 @@ export const subscribeToMessages = (coachId, clientId, callback) => {
   });
 };
 
+export const subscribeToCoachChats = (coachId, callback) => {
+  const q = query(collection(db, "chats"), where("coachId", "==", coachId));
+  return onSnapshot(q, (snapshot) => {
+    const chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(chats);
+  });
+};
+
 export const getAssignedClientsForCoach = async (coachId) => {
   try {
     // Get all assignments for this coach
