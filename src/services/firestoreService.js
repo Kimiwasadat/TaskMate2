@@ -478,6 +478,7 @@ export const sendMessage = async (coachId, clientId, senderId, text, taskContext
       coachId,
       clientId,
       lastMessageText: text,
+      lastMessageSenderId: senderId,
       lastMessageAt: serverTimestamp(),
     };
     

@@ -54,6 +54,17 @@ export default function CoachMessagesScreen({ navigation }) {
     const unreadCount = chat?.unreadByCoach || 0;
     const hasUnread = unreadCount > 0;
     
+    let previewText = "No messages yet";
+    if (chat?.lastMessageText) {
+      if (chat.lastMessageSenderId === user.id) {
+        previewText = `You: ${chat.lastMessageText}`;
+      } else {
+        previewText = chat.lastMessageText;
+      }
+    } else if (item.email) {
+      previewText = item.email;
+    }
+    
     return (
       <TouchableOpacity
         style={styles.clientItem}
@@ -80,7 +91,7 @@ export default function CoachMessagesScreen({ navigation }) {
             style={[styles.clientEmail, hasUnread && styles.boldMessageText]}
             numberOfLines={1}
           >
-            {chat?.lastMessageText || item.email || "No messages yet"}
+            {previewText}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
